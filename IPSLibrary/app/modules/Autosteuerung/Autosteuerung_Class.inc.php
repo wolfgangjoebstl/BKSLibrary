@@ -196,7 +196,12 @@ class AutosteuerungHandler
 
             configfileParser($configInput, $config, ["Weather","weather","Wetter","WEATHER","wetter","WETTER" ],"Weather" ,false);
 
-            configfileParser($configInput, $config, ["Heating", "OELHEIZUNG", "HEIZUNG", "HEATING", "heating", "heizung", "Heizung" ],"Heating" ,false);
+            //configfileParser($configInput, $config, ["Heating", "OELHEIZUNG", "HEIZUNG", "HEATING", "heating", "heizung", "Heizung" ],"Heating" ,false);
+            configfileParser($configInput, $configHeating, ["Heating", "OELHEIZUNG", "HEIZUNG", "HEATING", "heating", "heizung", "Heizung" ],"Heating" ,false);
+            $config["Heating"]=($this->setHeatingConfig($configHeating)["Heating"]);
+
+            configfileParser($configInput, $configProfiles, ["Profiles", "PROFILES", "PROFILE", "Profile" ],"Profiles" ,[]);
+            $config["Profiles"]=$this->setProfilesConfig($configProfiles)["Profiles"];
             
             configfileParser($configInput, $configHeatControl, ["HeatControl" ],"HeatControl" ,array());  
             //print_R($configHeatControl);
@@ -216,6 +221,58 @@ class AutosteuerungHandler
 
             return ($config);
             }
+
+
+        private function setHeatingConfig($configHeating,$debug=false)
+            {
+            if ($debug) echo "SetHeatingConfig   \n";
+            $module="Heating";
+            $config=array();
+            if (isset($configHeating[$module]))          
+                {  
+                configfileParser($configHeating[$module], $config[$module], ["innen","innenID","INNEN","Innen","Indoor","IndoorTemp"],"innen",null);    
+                configfileParser($configHeating[$module], $config[$module], ["innennames","INNENNAMES","InnenNames","Innennames","IndoorTempNames"],"innennames",null);  
+                configfileParser($configHeating[$module], $config[$module], ["aussen","aussenID","AUSSEN","Aussen","Outdoor","OutdoorTemp"],"aussen",null);  
+                configfileParser($configHeating[$module], $config[$module], ["kesseltemp","kesseltempID","KESSELTEMP","KesselTemp","Kesseltemp"],"kesseltemp",null);  
+                configfileParser($configHeating[$module], $config[$module], ["vorlauf","vorlaufID","VORLAUF","Vorlauf"],"vorlauf",null);  
+                configfileParser($configHeating[$module], $config[$module], ["ruecklauf","ruecklaufID","RUECKLAUF","Ruecklauf"],"ruecklauf",null);  
+                configfileParser($configHeating[$module], $config[$module], ["pumpe","pumpeXID","PUMPE","Pumpe"],"pumpe",null);  
+                configfileParser($configHeating[$module], $config[$module], ["brenner","brennerXID","Brenner","BRENNER"],"brenner",null);  
+                configfileParser($configHeating[$module], $config[$module], ["firestatus","firestatusID","Firestatus","FireStatus","FIRESTATUS"],"firestatus",null);  
+                configfileParser($configHeating[$module], $config[$module], ["tanklevel","tanklevelID","Tanklevel","TankLevel","TANKLEVEL"],"tanklevel",null);  
+                configfileParser($configHeating[$module], $config[$module], ["tanklpercm","tanklevelID","Tanklevel","TankLevel","TANKLEVEL"],"tanklpercm",null);  
+                configfileParser($configHeating[$module], $config[$module], ["mininterval","Mininterval","MinInterval","MININTERVAL"],"mininterval",null);  
+                }
+
+            if (sizeof($config)==0) return [$module=>array()];
+            if ($debug) print_r($config);
+            return($config);
+            }
+
+        private function setProfilesConfig($configHeating,$debug=false)
+            {
+            if ($debug) echo "SetProfilesConfig   \n";
+            $config=array();
+            $module="Profiles";            
+            if (isset($configHeating[$module]))          
+                { 
+                foreach ($configHeating[$module] as $index => $entry) 
+                    {
+                    $configprofile=array();
+                    configfileParser($configHeating[$module][$index], $configprofile, ["referencetemp","REFERENCETEMP","Referencetemp","ReferenceTemp"],"referencetemp",null); 
+                    configfileParser($configHeating[$module][$index], $configprofile, ["tempmax","TEMPMAX","Tempmax","TempMax"],"tempmax",null); 
+                    configfileParser($configHeating[$module][$index], $configprofile, ["tempmin","TEMPMIN","Tempmin","TempMin"],"tempmin",null); 
+                    configfileParser($configHeating[$module][$index], $configprofile, ["tempdrop","TEMPDROP","Tempdrop","TempDrop"],"tempdrop",null); 
+                    $config[$module][$index]=$configprofile;  
+                    }
+                }
+
+            if (sizeof($config)==0) return [$module=>array()];
+            if ($debug) print_r($config);
+            return($config);
+            }
+
+
 
         /* AutosteuerungHandler::get_Configuration
          *
@@ -2427,12 +2484,12 @@ class AutosteuerungOperator
             $order=100; 
             foreach ($geofencies as $device => $addresses)
                 {
-                echo "  Gerät $device (".IPS_GetName($device).").\n";   
+                if ($debug) echo "  Gerät $device (".IPS_GetName($device).").\n";   
                 $categoryId  = CreateVariableByName($categoryId_Anwesenheit, IPS_GetName($device),0, "", "", $order);      // CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0)
                 $order+=10;
                 foreach ($addresses as $index => $entry)
                     {
-                    echo "    $index ".str_pad("(".$entry["Name"].")",30)."  ".(GetValue($entry["OID"])?"Anwesend":"Abwesend")."\n";
+                    if ($debug) echo "    $index ".str_pad("(".$entry["Name"].")",30)."  ".(GetValue($entry["OID"])?"Anwesend":"Abwesend")."\n";
                     CreateLinkByDestination($entry["Name"], $entry["OID"],    $categoryId, $index);
                     }
                 }
@@ -3105,7 +3162,9 @@ class Autosteuerung
 
 	/* Autosteuerung::getFunctions
      * welche AutosteuerungsFunktionen sind aktiviert:
-     * unter data.modules.Autosteuerung.Ansteuerung alle bekannten Variablen auswerten und den  Status zurückmelden
+     * unter data.modules.Autosteuerung.Ansteuerung alle bekannten Variablen auswerten und den Status zurückmelden
+     * Kategorie wird mittlerweile für unterschiedliche Aktivitäten verwendet, Vorsicht bei der Auswertung
+     *
      * Bekannt sind derzeit
      *  GutenMorgenWecker, Anwesenheitserkennung, Alarmanlage, Stromheizung, Alexa
      *
@@ -3119,18 +3178,21 @@ class Autosteuerung
      * wenn die Funktion bekannt ist, zusätzlich noch STATUS
      *
      */
-
-	public function getFunctions($function="All")
+	public function getFunctions($function="All",$debug=false)
 		{
+        if ($debug) echo "getFunctions  ".$this->CategoryId_Ansteuerung." \n";
 		$children=array();
-		$childrenIDs=IPS_GetChildrenIDs($this->CategoryId_Ansteuerung);
-        print_R($childrenIDs);
+        $ipsOps = new ipsOps();
+		//$childrenIDs=IPS_GetChildrenIDs($this->CategoryId_Ansteuerung);
+        $childrenIDs=$ipsOps->getChildrenIDsOfType($this->CategoryId_Ansteuerung,OBJECTTYPE_VARIABLE);
+        if ($debug>1) print_R($childrenIDs);
 		foreach ($childrenIDs as $ID)
 			{
+            
 			$children[IPS_GetName($ID)]["OID"]=$ID;
 			$children[IPS_GetName($ID)]["VALUE"]=GetValue($ID);
 			$children[IPS_GetName($ID)]["VALUE_F"]=GetValueIfFormatted($ID);
-			//echo "getFunctions : ".$ID." (".IPS_GetName($ID).")\n";
+			if ($debug) echo "   ".$ID." (".IPS_GetName($ID).")\n";
 			switch (IPS_GetName($ID))
 				{
 				case "GutenMorgenWecker":
@@ -4088,8 +4150,7 @@ class Autosteuerung
 	 *
      * als erstes in einzelne Befehlsketten zerlegen, getrennt mit ;
      *
-	 *******************************************************/
-
+	 */
 	public function ParseCommand($params,$status=false,$simulate=false,$debug=false)
 		{
 		/************************** 
@@ -4508,10 +4569,9 @@ class Autosteuerung
 		return($parges);
 		}
 
-	/* of Autosteuerung
+	/* Autosteuerung::parseName
 	 * Wenn der Name der IPSLight Variablen keine IPS Light Variable aber vielleicht ein vordefinierter Wert ist, die OID der bekannten Variable zurückmelden
-	 */
-		
+	 */		
 	private function parseName($name)
 		{
         switch ($name)
@@ -4529,7 +4589,7 @@ class Autosteuerung
         return ($oid);
         }
 
-	/* of Autosteuerung
+	/* Autosteuerung::parseParameter
 	 * ersten teil des Arrays als Befehl erkenn, auf Grossbuchtaben wandeln, und das ganze array nochmals darunter speichern
 	 * Erweitert das übergebene Array.
 	 * bei size 1 nix machen, bei size 2, 4 oder groesser nur den ersten parameter mit trim/strtoupper bearbeiten
@@ -4561,12 +4621,11 @@ class Autosteuerung
 		return($result);
 		}
 
-	/* of Autosteuerung
+	/* Autosteuerung::parseValue
 	 * Wert nicht bekannt, true, false und toggle wurden bereits ausselektiert, entweder ein farbezeichnung oder eine Zahl, 
 	 * abhängig ob Level oder Color angegeben wurde handelt es sich wahrscheinlich um eine hex beziehungsweise dez Zahl 
 	 *
 	 */
-
 	private function parseValue($input,$result=array())
 		{
 		$extcolor=false;
@@ -4597,12 +4656,10 @@ class Autosteuerung
 		return($value);
 		}
 
-	/**********************************
-     * findSimilar of Autosteuerung
+	/* Autosteuerung::findSimilar
      *
      *
-     ***************************************/
-
+     */
 	function findSimilar($befehl, $echos=false, $debug=false)
         {
         $modulhandling = new ModuleHandling();		// true bedeutet mit Debug, für EchoControl Loadspeaker Ausgabe verwendet
@@ -4678,8 +4735,7 @@ class Autosteuerung
         return ($result);
         }
 
-	/**********************************
-     * getIdByName of Autosteuerung
+	/* Autosteuerung::getIdByName 
      *
      * überprüft IPSHeat, IPSLight auf den Namen und gibt ID, TYP und MODULE zurück 
      *
@@ -4690,8 +4746,7 @@ class Autosteuerung
      *
      * rückgemeldet wird ID, TYP und MODULE oder ein leeres array
      *
-     ***************************************/
-
+     */
 	function getIdByName($lightName)
 		{
 		$result=array();
@@ -4755,10 +4810,10 @@ class Autosteuerung
 
 		}
 
-    /* of Autosteuerung
+    /* Autosteuerung::switchByTypeModule
      * Schnelle Funktion um auf Basis des Ergebnis Typs einen Schalter oder eine Gruppe zu schalten
+     * verwendet von statusMonitorSteuerung, WebfrontControl,
      */
-
     function switchByTypeModule($ergebnisTyp, $state, $debug=false)
         {
         if ($debug) echo "switchByTypeModule Type ".json_encode($ergebnisTyp)."\n";
@@ -8053,7 +8108,57 @@ abstract class AutosteuerungFunktionen
 
 /*****************************************************************************************************
  *
+ */
+class Calculations
+    {
+
+
+    public function damping($data, $tauStunden, $debug=false)
+        {
+        $temp=array();
+        $index=0; $first=true;
+        $tauSekunden = $tauStunden * 3600;
+        $displayTime=time()-4*24*60*60; $displayData=false;
+        foreach ($data as $index=>$value)         // gedaempften verlauf erzeugen
+            {
+            $actTime=$value["TimeStamp"];
+            if (($actTime>$displayTime) && ($displayData))  echo str_pad($index,3)."   ".date("d.m.Y H:i:s",$actTime)."   ".str_pad($value["Value"]." °C",15);
+            if ($first)
+                {
+                $first=false;
+                $tempGedaempft=$value["Value"];
+                $temp[$index]["Value"]=$tempGedaempft;
+                $temp[$index]["TimeStamp"]=$actTime;
+                }
+            else
+                {
+                $dt = $value["TimeStamp"] - $oldtime;
+                // PT1-Filter Glättungskoeffizient Alpha: Alpha = 1 - e^(-dt / Tau)
+                $alpha = 1 - exp(-$dt / $tauSekunden);
+                // Formel: T_neu = T_alt + Alpha * (T_aktuell - T_alt)
+                $tempGedaempft = $tempGedaempft + $alpha * ($value["Value"] - $tempGedaempft);
+                if (($actTime>$displayTime) && ($displayData)) echo str_pad(round($tempGedaempft,2)." °C ",12);
+                $temp[$index]["Value"]=$tempGedaempft;
+                $temp[$index]["TimeStamp"]=$actTime;
+                }
+            if (($actTime>$displayTime) && ($displayData)) echo "\n";
+            $oldtime=$value["TimeStamp"];
+            $oldValue=$value["Value"];   
+            $index++;             
+            }
+        return ($temp);
+        }
+
+
+    }
+
+/*****************************************************************************************************
+ *
  * Temperaturregelung in der Autosteuerung extends AutosteuerungFunktionen
+ *          __construct         für neue Klasse
+ *          InitHeating         für Installation, benötigt $categoryId_Autosteuerung 
+ *          DoHeating           macht eigentlich den construct Teil, setzt aber ein erstmaliges InitHeating voraus, benötigt $categoryId_Autosteuerung
+ * ähnliche Prozesse wie bei einer Datenbank, damit die Zugriffe funktionieren muss ich auch eine erstmalige Installation und ein regelmaessiges Verbinden berücksichtigen
  *
  * Routinen zur Temperaturregelung. Construktor wird nun üblicherweise ohne Parameter aufgerufen.
  * d.h. construct muss sich selbst helfen und Annahmen treffen:
@@ -8064,27 +8169,46 @@ abstract class AutosteuerungFunktionen
  *  InitHeating             for Installation
  *  DoHeating               for Operation
  *
+ *  tempToWeb
+ *  kesselToWeb
+ *
  *  WriteLink
  *  InitMesagePuffer
  *
  *  getConfiguration
  *  getConfigHeating
- *  checkHeatingMode            delivers input for heatingmode, writes class variable innen
+ *  checkHeatingMode            check config complete, delivers input for heatingmode, writes class variable innen
+ *  checkHeatingOperationMode   check config complete
  *  getHeatingMode
  *
  *  heatingPower
+ *  heatingTime
  *      calcHeatingPower
- *
+ *      calcFirePower
+ *      calcWaterPower
+ *  OutdoorTemp
+ *      calcOutdoorTemp
  *  getConfig_xID
+ *  createInnen
+ *  createKessel
+ *  createDummyToWeb
+ *  getDummyInstanceByName
  *
  **************************************************************************************************************/
 
 
 class AutosteuerungRegler extends AutosteuerungFunktionen
 	{
-    public $heatingPowerID,$heatingTimeID,$heatingPowerAdjustID,$waterPowerID,$firePowerID,$heatingStatus,$heatingfullStatus,$stateEngineID;
+    public $heatingPowerID,$heatingTimeID,$restartTimeHeatingID,$waterPowerID,$firePowerID;
+    public $gasolineDailyID,$gasolineID;
+    public $powerStatusID,$heatingStatus,$heatingfullStatus;
+    
+    public $stateEngineID,$stateTimerCounterID,$stateTimerStatusID,$stateTimerValueID;
 
-    protected $categoryId_Autosteuerung=false;
+    public $heatingPowerAdjustID,$kAdjustID;
+    public $powerOnFunctionID,$powerOnTimerID,$powerOnTimerPlusMinusID;
+
+    protected $categoryId_Autosteuerung=false,$categoryId_Heating=false;
 
 	protected $log_File="Default";
 	protected $script_Id="Default";
@@ -8149,34 +8273,77 @@ class AutosteuerungRegler extends AutosteuerungFunktionen
 		$this->InitLogNachrichten($type,$profile);		/*  ruft das Geraete spezifische InitMesagePuffer() auf, logging in Objekten mit String und ohne Profil festlegen, keien Abstrkte Routine, auf jeden Fall programmieren */
 		}
 
+    /*
+     */
     function InitHeating($categoryId_Autosteuerung=false)
         {
         if ($categoryId_Autosteuerung===false) $categoryId_Autosteuerung=$this->categoryId_Autosteuerung;
         if (IPS_ObjectExists($categoryId_Autosteuerung))
             {
             $this->categoryId_Autosteuerung=$categoryId_Autosteuerung;
+            $scriptIdWebfrontControl   = IPS_GetScriptIDByName('WebfrontControl', $this->categoryIdApp);
+
             $ao =  new archOps();
             if ($this->getHeatingMode())
                 {
                 echo "Heating Mode active, add Categories and Variables.\n";
                 $categoryId_Heating        = CreateCategory("Heating",$categoryId_Autosteuerung,10);
 
-                $heatingTimeID             = CreateVariableByName($categoryId_Heating,"heatingTime",        1,"",null,0,null,0);                    // in Stunden
-                $heatingPowerID            = CreateVariableByName($categoryId_Heating,"heatingPower",       2,"~Power",null,0,null,0);           // from Spreizung Vorlauf-Ruecklauf
+                $innenname=array();
+                if (isset($this->configHeating["innennames"])) $innennames=$this->configHeating["innennames"];
+                //$oid=$this->getDummyInstanceByName("Innen");
+                $oid=$this->createDummyToWeb("Innen", $this->createInnen($innennames));
+                echo "Temp Instance Innen is $oid.\n";
+                $oid=$this->createDummyToWeb("Kessel", $this->createKessel());
+                echo "Kessel Instance Innen is $oid.\n";
+
+                $heatingTimeID              = CreateVariableByName($categoryId_Heating,"heatingTime",        1,"",null,0,null,0);                    // in Stunden
+                $restartTimeHeatingID       = CreateVariableByName($categoryId_Heating,"restartTimeHeating",        1,"",null,0,null,0);                    // in Stunden
+
+                $heatingPowerID             = CreateVariableByName($categoryId_Heating,"heatingPower",       2,"~Power",null,0,null,0);              // from Spreizung Vorlauf-Ruecklauf
+                $waterPowerID               = CreateVariableByName($categoryId_Heating,"waterPower",         2,"~Power",null,0,null,0);                // 5 Stundenwert gemittelt aus der berichtigten Spreizung
+                $firePowerID                = CreateVariableByName($categoryId_Heating,"firePower",          2,"~Power",null,0,null,0);                // 5 Stundenwert gemittelt aus der brennerperformance
+                $gasolineID                 = CreateVariableByName($categoryId_Heating,"Gasoline",           2,"",null,0,null,0); 
+                $gasolineDailyID            = CreateVariableByName($categoryId_Heating,"GasolineDaily",      2,"",null,0,null,0);                                
+
+                $heatingStatus			    = CreateVariableByName($categoryId_Heating,"simpleStatusView",   3,'~HTMLBox');          
+                $heatingfullStatus		    = CreateVariableByName($categoryId_Heating,"fullStatusView",     3,'~HTMLBox');          
+
+                $stateEngineID              = CreateVariableByName($categoryId_Heating,"stateEngine",        3,"",null,0,null,"off");    
+                $stateTimerCounterID        = CreateVariableByName($categoryId_Heating,"stateTimerCounter",  1,"",null,0,null,0);
+                $stateTimerStatusID         = CreateVariableByName($categoryId_Heating,"stateStatus",        1,"",null,0,null,0); 
+                $stateTimerValueID          = CreateVariableByName($categoryId_Heating,"stateTimerValue",    1,"",null,0,null,0);                
+                $powerStatusID              = CreateVariableByName($categoryId_Heating,"powerStatus",        1,"",null,0,null,0);                                 
+
+                $webOps = new webOps();
+                $pname="SwitchHeatingOnDelay";
+                $nameID=["Off","On","OnIn4Hours","5Hours","6Hours"];
+                $webOps->createActionProfileByName($pname,$nameID,0);  // erst das Profil, dann die Variable, 0 ohne Selektor
+                $powerOnFunctionID         = CreateVariableByName($categoryId_Heating, "PowerOn",   1 , $pname, "", 9000, $scriptIdWebfrontControl );   // Integer
+
+                $pname="SwitchHeatingTimer";
+                $nameID=["1Hour","2Hour","3Hour","4Hour","6Hour","8Hour","12Hour","24Hour"];
+                $webOps->createActionProfileByName($pname,$nameID,0);  // erst das Profil, dann die Variable, 0 ohne Selektor
+                $powerOnTimerID         = CreateVariableByName($categoryId_Heating, "PowerTimer",   1 , $pname, "", 9010, $scriptIdWebfrontControl );   // Integer
+
+                $pname="SwitchTimerTimePlusMinus";
+                $nameID=["Minus","Timer","Plus"];
+                $webOps->createActionProfileByName($pname,$nameID,0);  // erst das Profil, dann die Variable, 0 ohne Selektor
+                $powerOnTimerPlusMinusID      = CreateVariableByName($categoryId_Heating, "PowerTimerPlusMinus",   1 , $pname, "", 9010, $scriptIdWebfrontControl );   // Integer
+
+                // not in use
                 $heatingPowerAdjustID      = CreateVariableByName($categoryId_Heating,"heatingPowerAdjust", 2,"~Power",null,0,null,0);           // Anpassungen aufgrund von Messfehlern
-                $waterPowerID              = CreateVariableByName($categoryId_Heating,"waterPower",         2,"~Power",null,0,null,0);                // 5 Stundenwert gemittelt aus der berichtigten Spreizung
-                $firePowerID               = CreateVariableByName($categoryId_Heating,"firePower",          2,"~Power",null,0,null,0);                // 5 Stundenwert gemittelt aus der brennerperformance
-
-                $heatingStatus			   = CreateVariableByName($categoryId_Heating,"simpleStatusView",   3,'~HTMLBox');          
-                $heatingfullStatus		   = CreateVariableByName($categoryId_Heating,"fullStatusView",     3,'~HTMLBox');          
-
-                $stateEngineID             = CreateVariableByName($categoryId_Heating,"stateEngine",        3,"",null,0,null,"off");    
+                $kAdjustID                 = CreateVariableByName($categoryId_Heating,"kAdjust",            2,"",      null,0,null,0);           // Anpassungen aufgrund von Messfehlern
 
                 // Archiving            
                 $ao->setArchiving($heatingPowerID,true,false);  
                 $ao->setArchiving($heatingPowerAdjustID,true,false);  
                 $ao->setArchiving($waterPowerID,true,false);  
                 $ao->setArchiving($firePowerID,true,false);  
+                $ao->setArchiving($powerStatusID,true,false);           // wielang Pumpe und Brenner unter Strom, keine Brennleistung                
+                $ao->setArchiving($gasolineID,true,true);               // Archiving as Counter
+
+                $this->categoryId_Heating = $categoryId_Heating;
                 }
             }
         else
@@ -8196,19 +8363,610 @@ class AutosteuerungRegler extends AutosteuerungFunktionen
         if ( $this->getHeatingMode() && IPS_ObjectExists($categoryId_Autosteuerung) )
             {
             $categoryId_Heating        = IPS_GetCategoryIDByName("Heating",$categoryId_Autosteuerung);
-            $this->heatingTimeID             = IPS_GetVariableIDByName("heatingTime",$categoryId_Heating);                    // in Stunden
+            
+            $this->heatingTimeID            = IPS_GetVariableIDByName("heatingTime",$categoryId_Heating);                    // in Stunden
+            $this->restartTimeHeatingID      = IPS_GetVariableIDByName("restartTimeHeating",$categoryId_Heating);
 
-            $this->heatingPowerID            = IPS_GetVariableIDByName("heatingPower",$categoryId_Heating);
+            $this->heatingPowerID           = IPS_GetVariableIDByName("heatingPower",$categoryId_Heating);
+            $this->waterPowerID             = IPS_GetVariableIDByName("waterPower",$categoryId_Heating);                // 5 Stundenwert gemittelt aus der berichtigten Spreizung
+            $this->firePowerID              = IPS_GetVariableIDByName("firePower",$categoryId_Heating);                // 5 Stundenwert gemittelt aus der brennerperformance
+            $this->gasolineID               = IPS_GetVariableIDByName("Gasoline",$categoryId_Heating);   
+            $this->gasolineDailyID          = IPS_GetVariableIDByName("GasolineDaily",$categoryId_Heating);                          
+
+            $this->heatingStatus			= IPS_GetVariableIDByName("simpleStatusView",$categoryId_Heating);          
+            $this->heatingfullStatus		= IPS_GetVariableIDByName("fullStatusView",$categoryId_Heating);          
+
+            $this->stateEngineID            = IPS_GetVariableIDByName("stateEngine",$categoryId_Heating);
+            $this->stateTimerCounterID      = IPS_GetVariableIDByName("stateTimerCounter",$categoryId_Heating);
+            $this->stateTimerStatusID       = IPS_GetVariableIDByName("stateStatus",$categoryId_Heating);
+            $this->stateTimerValueID         = IPS_GetVariableIDByName("stateTimerValue",$categoryId_Heating);            
+            $this->powerStatusID       = IPS_GetVariableIDByName("powerStatus",$categoryId_Heating);
+
+            $this->powerOnFunctionID        = IPS_GetVariableIDByName("PowerOn",$categoryId_Heating);
+            $this->powerOnTimerID            = IPS_GetVariableIDByName("PowerTimer",$categoryId_Heating);
+            $this->powerOnTimerPlusMinusID   = IPS_GetVariableIDByName("PowerTimerPlusMinus",$categoryId_Heating);
+
+            // in preparation
             $this->heatingPowerAdjustID      = IPS_GetVariableIDByName("heatingPowerAdjust",$categoryId_Heating);           // Anpassungen aufgrund von Messfehlern
-            $this->waterPowerID              = IPS_GetVariableIDByName("waterPower",$categoryId_Heating);                // 5 Stundenwert gemittelt aus der berichtigten Spreizung
-            $this->firePowerID               = IPS_GetVariableIDByName("firePower",$categoryId_Heating);                // 5 Stundenwert gemittelt aus der brennerperformance
+            $this->kAdjustID                 = IPS_GetVariableIDByName("kAdjust",$categoryId_Heating);
 
-            $this->heatingStatus			   = IPS_GetVariableIDByName("simpleStatusView",$categoryId_Heating);          
-            $this->heatingfullStatus		   = IPS_GetVariableIDByName("fullStatusView",$categoryId_Heating);          
-
-            $this->stateEngineID             = IPS_GetVariableIDByName("stateEngine",$categoryId_Heating);
+            $this->categoryId_Heating        = $categoryId_Heating;
             if ($debug) echo "Heating Mode  $categoryId_Heating $heatingPowerID $stateEngineID \n";
             }
+        }
+
+   
+    /* AutosteuerungRegler::doStatus
+     * Anzeige als html, nette Darstellung oder als Start eine Tabelle
+     *
+     *      stateTimerValueID       Timer
+     */
+    public function doStatus()
+        {
+        $reglerConf = $this->getConfigHeating(); 
+        $result=$this->doInnenStatistics();                 // ruft die Innentemperaturwerte der letzten Woche ab und schaut sich di estatistische Auswertung an 
+
+        $timertime=GetValue($this->stateTimerCounterID);
+        $timeraction=date("D H:i",time()+$timertime*60);
+        $tanklevel=false; $literpercm=false;
+        if (isset($reglerConf["tanklevel"]))  $tanklevel  = GetValue($reglerConf["tanklevel"]);
+        if (isset($reglerConf["tanklpercm"])) $literpercm = $reglerConf["tanklpercm"];
+
+        $html  = "";
+        $html .= "<table><tr>";
+        $html .= "<td>StateEngine : ".GetValue($this->stateEngineID)."</td<";
+        $html .= "</tr><tr>";
+        $html .= "<td>".GetValue($reglerConf["vorlauf"])."°C</td>";
+        $html .= "<td>".GetValue($reglerConf["ruecklauf"])."°C</td>";
+        $html .= "<td>".GetValue($reglerConf["kesseltemp"])."°C</td>";
+        foreach ($result as $entry)
+            {
+            $html .= "</tr><tr>";
+            $html .= "<td>".$entry["Name"]."</td>";            
+            $html .= "<td>".$entry["Value"]." °C</td>";
+            $html .= "<td>Max ".$entry["Maxtemp"]["Value"]." °C</td><td>Time ".date("d.m.Y H:i",$entry["Maxtemp"]["TimeStamp"])." °C</td>";
+            $html .= "<td>Min ".$entry["Mintemp"]["Value"]." °C</td><td>Time ".date("d.m.Y H:i",$entry["Mintemp"]["TimeStamp"])." °C</td>";
+            }
+        $html .= "</tr><tr>";  
+        $html .= "<td>Timer</td><td>Set ".nf(GetValue($this->stateTimerValueID),"s")."</td><td>Actual ".$timertime." Min</td><td> Action at ".$timeraction." Min</td>";  
+        if ($tanklevel)
+            {
+            $html .= "</tr><tr>";  
+            $html .= "<td>Tank</td><td>Liter ".$tanklevel." Liter</td>";
+            if ($literpercm) $html .= "<td>Tankfüllstand ".round($tanklevel/$literpercm,0)." cm</td>";              
+            }                
+        $html .= "</tr>";
+        $html .= "</table>";
+        return ($html);
+        }
+
+    /* AutosteuerungRegler::doStateEngineControl
+     * called every 30 minutes, does slow calcs and statistical data
+     *
+     * alle 30 Minuten aufgerufen, führt längere statistische auf historischen Daten beruhende Berechnungen durch
+        stateEngineID           
+        stateTimerCounterID     
+        stateTimerStatusID      
+        powerStatusID                   Pumpe und Brenner gemeinsam als Zahl
+     *
+     */
+    public function doStateEngineControl($debug=false)
+        {
+        $archiveOps = new archiveOps();            
+        $reglerConf = $this->getConfigHeating(); 
+
+        $brenner = $reglerConf["brenner"];
+        $xOID_Brenner = $this->getConfig_xID($brenner,$debug);
+
+        $innennames=array();
+        if (isset($this->configHeating["innennames"])) $innennames=$this->configHeating["innennames"];
+        $configInnen=$this->createInnen($innennames);
+        //$oid=$this->createDummyToWeb("Innen", $this->createInnen($innennames));
+
+        foreach ($configInnen as $tempId => $data)
+            {
+            echo "Temp Innen ".str_pad($data["Name"],10)." : ".GetValueIfFormatted($tempId)."\n";
+            $indoorID=$tempId;
+            }
+
+        $firestatusId=false;
+        if (isset($reglerConf["firestatus"])) $firestatusId=$reglerConf["firestatus"];          
+        if ($debug) echo "doStateEngineControl \n";
+        $midnight=strtotime(date("d.m.Y 00:00"));
+        $timeOfDay=time()-$midnight;
+        if ($debug) echo date("d.m.Y H:i:s",$midnight)."   Time of Day : ".nf($timeOfDay,"s")."\n";
+        $variable=IPS_GetVariable($this->stateTimerStatusID);
+        $timeUpdated=$variable["VariableUpdated"];
+        if ($timeUpdated>$midnight) 
+            {
+            if ($debug) echo "Mitternachtsabfrage bereits erledigt.\n";
+            }
+        else
+            {
+            if ($debug) echo "Mitternachtsabfrage durchführen. \n";
+            // Oelverbrauch ermitteln  
+            if ($firestatusId)          // Midnight
+                {
+                $powerGas = $this->calcFirePower($firestatusId,24,false);          // hours=integration time
+                if ($debug>1) print_r($powerGas);
+                $liters=GetValue($this->gasolineID)+$powerGas["Gasoline"]["24Hours"];
+                SetValue($this->gasolineID,$liters);
+                }  
+            }          
+        if ($firestatusId)
+            {
+            $heatinghours = $this->heatingTime();
+            echo "Brenner Betrieb seit $heatinghours Stunden. 0 wenn aus.\n"; 
+            $hours=5;               // to integrate
+            if ($heatinghours<$hours) $hours=$heatinghours;                           
+            $powerGas = $this->calcFirePower($firestatusId,$hours,false);          // hours=integration time
+            if ($debug>1) print_r($powerGas);
+            if (isset($powerGas["Gasoline"]["24Hours"]))
+                {
+                $liter24h=$powerGas["Gasoline"]["24Hours"];
+                SetValue($this->gasolineDailyID,$liter24h);            
+                echo "Liter 24hours :$liter24h   \n";
+                }
+            echo "Gasoline Liters consumption : ".GetValue($this->gasolineID)."\n";            
+            }
+        $categoryId_Global  = IPS_GetCategoryIDByName('Global',   $this->categoryIdData);     
+        $outdoorID        = IPS_GetObjectIDByName("OutdoorTemp",$categoryId_Global);
+        echo "Analyse Weather Data from ORF gespeichert in $outdoorID :\n";
+        echo "Eigene Aussentemp Daten ".$this->configHeating["aussen"]." werden nicht beruecksichtigt:\n";
+        // Get Historical Outdoor Temdata
+        $days=6;                                // typisch dreimal Tau , damit ein guter Gebäudetemperaturwert herauskommt
+
+        $config=array();
+        $config["StartTime"]=time()-$days*24*60*60;                // kann Unixtime und string Time
+        $config["Warning"]=false;
+        $data=$archiveOps->getValues($outdoorID,$config);
+        if (isset($data["Values"])) $values = $data["Values"];
+        else $values=array();
+        // historical and actual is stored in values
+
+        $values = $this->interpolateHourly(array_merge($values,$this->prognoseWeatherData()));
+
+        /*   gedämpfte Aussentemperatur wird on demand brechnet
+        $varInfo = IPS_GetVariable($outdoorMeansID);
+        $lastUpdate = $varInfo['VariableUpdated'];
+        echo "Outdoor Temperature Means last Update : $lastUpdate ".date("d.m.Y H:i:s",$lastUpdate)."\n";           // lastupdate kann auch erste Installation sein
+        */
+
+        if ($debug) print_r($values);         // Historie + Prognose
+
+        $restartTime=$this->examineDataOfHeating($values,$indoorID,$outdoorID);
+
+        echo "Restart Time for Heating is ".date("d.m.Y H:i",$restartTime)."\n";
+        SetValue($this->restartTimeHeatingID,$restartTime);
+
+        //print_R($variable);
+        SetValue($this->stateTimerStatusID,GetValue($this->stateTimerStatusID));            // Update every 30 Minutes, detection of Midnight uses this value
+        }
+
+
+    /* AutosteuerungRegler::processOnTimer
+     *  called every minute, counts down until zero, 
+     *  returns true if this has happened
+     */
+    public function processOnTimer()        // called every minute
+        {
+        $newDelay=GetValue($this->stateTimerCounterID);
+        if ($newDelay>1)
+            {
+            $newDelay=$newDelay-1;
+            SetValue($this->stateTimerCounterID,$newDelay);
+            if ($newDelay==0) return (true);
+            }
+        else    
+            {
+            SetValue($this->stateTimerCounterID,0);  
+            }
+        return (false);
+        }
+
+    /* AutosteuerungRegler::processStateEngine
+     * typically called every minute
+     * can be called as often as possible, shall not be reliable on internal timings
+     *
+     */ 
+    public function processStateEngine($debug=false)
+        {
+        $targetVLT=40;
+        $reglerConf = $this->getConfigHeating(); 
+
+        $auto = new Autosteuerung();
+        $brenner = $reglerConf["brenner"];
+        $xOID_Brenner = $this->getConfig_xID($brenner,$debug); 
+
+        if (IPS_SemaphoreEnter("StateEngine", 1000))
+            {            
+            $state=GetValue($this->stateEngineID);
+            switch ($state)
+                {
+               case "PendingOff":                      // check some parameters
+                    $newDelay=GetValue($this->stateTimerCounterID);
+                    if ($newDelay==0)
+                        {    
+                        SetValue($this->stateEngineID,"PowerOff");   
+                        }
+                    break;
+                case "PowerOff":
+                    $auto->switchByTypeModule($xOID_Brenner,false, false);                   // ausschalten
+                    SetValue($this->powerStatusID,1);
+                    SetValue($this->stateEngineID,"CoolingDown");
+                    break;
+                case "CoolingDown":             // Ruecklauftemperatur sinkt ab
+
+                    break; 
+                case "WarmStandBy":                 // waiting to repower
+                    break;                    
+                case "StandBy":                 // eine Woche, lastchange to Standby
+                    break;
+                case "SwitchedOff":                 // Pumpe wurde auch deaktiviert
+                    break;                   
+                case "PendingOn":                       // waits for Timer or other Blocking ones
+                    $newDelay=GetValue($this->stateTimerCounterID);
+                    if ($newDelay==0)
+                        {    
+                        SetValue($this->stateEngineID,"PowerOn");   
+                        }
+                    break;
+                case "PowerOn":         // intermediateState, can be called directly
+                    $auto->switchByTypeModule($xOID_Brenner,true, false);                   // einschalten
+                    SetValue($this->powerStatusID,2);
+                    SetValue($this->stateEngineID,"HeatingUp");
+                    break;
+                case "HeatingUp":
+                    if (GetValue($reglerConf["vorlauf"])>$targetVLT) SetValue($this->stateEngineID,"Operation");
+                    break;
+                case "Operation":
+                    break;
+                default:
+                    break;
+                }
+            IPS_SemaphoreLeave("StateEngine");
+            return (true);
+            }
+        else
+            {
+            echo "StateEngine failed, wrong timing.\n";
+            return (false);
+            }
+        }
+
+    /* AutosteuerungRegler::setStateEngine
+     * setStateEngine manages the interaction to state engine
+     *      Auto        SetTimer if needed
+     */
+    public function setStateEngine($newstatus,$parameter=false)
+        {
+        if (IPS_SemaphoreEnter("StateEngine", 1000))
+            {
+            switch ($newstatus)
+                {
+                case "PowerOn":
+                    SetValue($this->stateTimerCounterID, 0);
+                    SetValue($this->stateEngineID,"PendingOn");
+                    break;
+                case "PowerOff":            // Sofort
+                    SetValue($this->stateTimerCounterID, 0);
+                    SetValue($this->stateEngineID,"PendingOff");
+                    break;
+                case "Auto":                // automatic evaluation of Timer Time in Minutes
+                    $DelayTime=round((GetValue($this->restartTimeHeatingID)-time())/60,0);              // Minutes
+                    if ($DelayTime>1) $DelayTime -=1;           // 1 Minute abziehen
+                    if ($DelayTime<0) $DelayTime =0;            // kleiner = ist 0 für aus
+                    SetValue($this->stateTimerCounterID, $DelayTime); 
+                    SetValue($this->stateEngineID,"PendingOn");                                  
+                    break;                
+                case "PowerOnDelayed":
+                    if (is_numeric($parameter)===false) $parameter=0;
+                    $DelayTime=round($parameter/60,0);              // Minutes
+                    if ($DelayTime>1) $DelayTime -=1;           // 1 Minute abziehen
+                    if ($DelayTime<0) $DelayTime =0;            // kleiner = ist 0 für aus
+                    SetValue($this->stateTimerCounterID, $DelayTime);
+                    SetValue($this->stateEngineID,"PendingOn");
+                    break;
+                case "PowerOffDelayed":
+                    if (is_numeric($parameter)===false) $parameter=0;
+                    $DelayTime=round($parameter/60,0);              // Minutes
+                    if ($DelayTime>1) $DelayTime -=1;           // 1 Minute abziehen
+                    if ($DelayTime<0) $DelayTime =0;            // kleiner = ist 0 für aus
+                    SetValue($this->stateTimerCounterID, $DelayTime);
+                    SetValue($this->stateEngineID,"PendingOff");
+                    break;
+                default:
+                    break;
+                }
+            IPS_SemaphoreLeave("StateEngine");
+            return (true);
+            }
+        else
+            {
+            echo "StateEngine failed, wrong timing.\n";
+            return (false);
+            }
+        }
+
+
+    /* AutosteuerungRegler::getTimerSetPressed,getSwitchPressed
+     * in WebfrontControl, called when Button is pressed, derives the right acctions and calls setStateEngine
+     * setStateEngine manages the interaction to state engine
+     *
+     *      stateTimerValueID  timer Time in Seconds
+     *
+     * Schalter $nameID=["Off","On","Auto","OnTimer","OffTimer"];
+     * Timer    $nameID=["1Hour","2Hour","3Hour","4Hour","6Hour","8Hour","12Hour","24Hour"];     
+     */
+     public function getTimerSetPressed($timer="unknown")
+        {
+        $timerID=$this->stateTimerValueID;
+        $timertime=false;
+        switch ($timer)
+            {
+            case "1Hour":
+                $timertime=60*60;       // in seconds
+                break;
+            case "2Hour":
+                $timertime=2*60*60;       // in seconds
+                break;
+            case "3Hour":
+                $timertime=3*60*60;       // in seconds
+                break;
+            case "4Hour":
+                $timertime=4*60*60;       // in seconds
+                break;                    
+            case "6Hour":
+                $timertime=6*60*60;       // in seconds
+                break;                    
+            case "8Hour":
+                $timertime=8*60*60;       // in seconds
+                break;                    
+            case "12Hour":
+                $timertime=12*60*60;       // in seconds
+                break;                    
+            case "24Hour":
+                $timertime=12*60*60;       // in seconds
+                break; 
+            case "Plus":
+                $oldValue=GetValue($timerID);
+                $timertime=$oldValue+60*60;
+                break;
+            case "Minus":
+                $oldValue=GetValue($timerID);
+                $timertime=$oldValue-60*60;
+                if ($timertime<0) $timertime=0;
+                break;   
+            case "Timer":
+                break;                                                    
+            default:
+                echo "Do not know setting \n";
+                break;
+            }
+        if ($timertime) SetValue($timerID,$timertime);
+        return($timertime);         // false or a value
+        }
+
+    public function getSwitchPressed($function)
+        {
+        switch ($function)
+            {
+            case "On":
+                $this->setStateEngine("PowerOn");
+                break;
+            case "Off":
+                $this->setStateEngine("PowerOff");
+                break;
+            case "Auto":
+                $this->setStateEngine("Auto");
+                break;                                    
+            case "OnTimer":
+                $timertime=GetValue($this->stateTimerValueID);
+                $this->setStateEngine("PowerOnDelayed",$timertime);
+                break;
+            case "OffTimer":
+                $timertime=GetValue($this->stateTimerValueID);
+                $this->setStateEngine("PowerOffDelayed",$timertime);                
+                break;
+            default:
+                break;
+            }
+        }
+
+    /* 
+     * Openweather auslesen, die OWD Instanzen finden
+     * an den OWD Instanzen sind die Wetterdaten dran, lange Datenreihen, durchnumeriert
+     * in ein array wandeln, vorerst nur die Temperatur, es gebe aber mehr, wie Sonne, Wolken, Regen, Wind
+     */
+    public function prognoseWeatherData($debug=false)
+        {
+        // OpenWeather in Startpage
+        IPSUtils_Include ('Startpage_Configuration.inc.php', 'IPSLibrary::config::modules::Startpage');
+        IPSUtils_Include ('Startpage_Include.inc.php', 'IPSLibrary::app::modules::Startpage');
+        IPSUtils_Include ('Startpage_Library.class.php', 'IPSLibrary::app::modules::Startpage');
+        $startpage = new StartpageHandler();
+        $OWDs = $startpage->getOWDs();
+        $result=array(); $daily=array();
+        foreach ($OWDs as $OWD) 
+            {
+            $result[$OWD]=OpenWeatherData_UpdateHourlyForecast($OWD);
+            $beginn=$startpage->findeVarSerie("Beginn",$OWD);
+            $minimale=$startpage->findeVarSerie("minimale",$OWD);
+            $maximale=$startpage->findeVarSerie("maximale",$OWD);
+            $result[$OWD]["minimale"]=$minimale;
+            //$result[$OWD]=OpenWeatherData_UpdateData($OWD);
+            ksort($beginn);
+            foreach ($beginn as $index => $value)
+                {
+					$day=date("d",$value["Wert"]);
+					if (isset($daily[$day]))
+						{
+						if ($daily[$day]["minTemp"]>$minimale[$index]["Wert"]) $daily[$day]["minTemp"]=$minimale[$index]["Wert"];
+						if ($daily[$day]["maxTemp"]<$maximale[$index]["Wert"]) $daily[$day]["maxTemp"]=$maximale[$index]["Wert"];				
+						//$daily[$day]["CloudSum"]+=$clouds[$index]["Wert"];
+						//$daily[$day]["Count"]++;
+						//$daily[$day]["Rains"]+=$rains[$index]["Wert"];
+						//if ($rains[$index]["Wert"] > 0) $daily[$day]["RainPeriode"]++;
+						}
+					else
+						{
+						$daily[$day]["Date"]=date("D d",$value["Wert"]);;
+						$daily[$day]["minTemp"]=$minimale[$index]["Wert"];
+						$daily[$day]["maxTemp"]=$maximale[$index]["Wert"];
+						//$daily[$day]["CloudSum"]=$clouds[$index]["Wert"];
+						//$daily[$day]["Count"]=1;
+						//$daily[$day]["Rains"]=$rains[$index]["Wert"];
+						//if ($rains[$index]["Wert"] > 0) $daily[$day]["RainPeriode"]=1;
+						//else $daily[$day]["RainPeriode"]=0;
+						}		
+					if ($debug) 
+                        {
+                        echo "   ".$index;
+                        //echo "  =>   ".str_pad($value["Name"],50);
+                        //echo " = ";
+                        echo "  ".date("D d H:i",$value["Wert"]);
+                        echo "           ";
+                        if ($minimale[$index]["Wert"] != $maximale[$index]["Wert"]) echo str_pad($minimale[$index]["Wert"]." bis ".$maximale[$index]["Wert"]." °C ",30);
+                        else echo str_pad($minimale[$index]["Wert"]." °C ",30);
+                        //echo "Bewölkung ".$clouds[$index]["Wert"]."%";
+                        echo "\n";
+                        }
+                    $input = array();
+                    $input["TimeStamp"]=$value["Wert"];
+                    $input["Value"]=$minimale[$index]["Wert"];
+                    $values[]=$input;	    	        //if ($value["Wert"]>$endTime) $endTime=$value["Wert"];                
+                }
+            }
+        return($values);
+        }
+
+
+    /*
+     * 
+     */
+    public function examineDataOfHeating($values,$indoor2ID,$outdoorID,$debug=false)
+        {
+        // setup parameters
+        $displayData=true;
+        // Gebäudeparameter Tau in Stunden (an dein Gebäude anpassen)            
+        $tauStunden2 = 70.0;
+        $tauSekunden2 = $tauStunden2 * 3600;
+
+        // Zeitkonstante Tau in Stunden (Gebäude-Dämmung):
+        // 12-18h = Leichtbau / Ungedämmt | 24h = Standard/Teilsaniert | 48h = Massiv/Gut gedämmt
+        //$tauStunden = 24;
+        $tauStunden = 12;
+        $tauSekunden = $tauStunden * 3600;
+
+        // Regelparameter
+        $tempAktuell = GetValue($outdoorID);
+        $simTemp=GetValue($indoor2ID); 
+        $simTempTrigger=$simTemp-1; 
+        $lowestTempAccepted=23;
+        If ($simTempTrigger<$lowestTempAccepted) $simTempTrigger=$lowestTempAccepted;
+
+        $simTimeTrigger=false;
+        $simTime=time();                        // zeitpunkt bei dem die Heizung ein oder ausgeschaltet wurde
+
+        // Zeitpunkt letzte Schaltänderung Regler selbt evaluieren
+        $reglerConf = $this->getConfigHeating();
+        $brenner = $reglerConf["brenner"];
+        $xOID2 = $this->getConfig_xID($brenner,$debug);
+        print_R($xOID2);         // entweder array oder eine normale OID
+
+        if (is_array($xOID2)) $oid=$xOID2["ID"];
+        else $oid=$xOID2;
+        $variable=IPS_GetVariable($oid);
+        //print_r($variable);
+        $simTime=$variable["VariableChanged"];
+        $heating=GetValue($oid);
+        if ($displayData) echo "Brenner Betrieb : ".(GetValue($oid)?"Ein":"Aus")." seit ".date("d.m.Y H:i",$simTime)."\n";
+
+        //$simTime=strtotime("5.10.2026 9:00");
+
+        $displayTime=$simTime-24*60*60;         // 1 Tag vorher          
+        if ($displayData) echo "Temperatur $tempAktuell Grad stored in $outdoorID , Indoor now is $simTemp Grad.\n"; 
+
+        $first=true;
+        if ($displayData) echo str_pad("Index",3)." ".str_pad("Date",20)."  ".str_pad("Outdoor",12)." Means Outoor Indoor\n";
+        foreach ($values as $index=>$value)
+            {
+            $actTime=$value["TimeStamp"];
+            if (($actTime>$displayTime) && ($displayData))  echo str_pad($index,3)."   ".date("d.m.Y H:i:s",$actTime)."   ".str_pad($value["Value"]." °C",15);
+            if ($first)
+                {
+                $first=false;
+                $tempGedaempft=$value["Value"];
+                }
+            else
+                {
+                $dt = $value["TimeStamp"] - $oldtime;
+                // PT1-Filter Glättungskoeffizient Alpha: Alpha = 1 - e^(-dt / Tau)
+                $alpha = 1 - exp(-$dt / $tauSekunden);
+                // Formel: T_neu = T_alt + Alpha * (T_aktuell - T_alt)
+                $tempGedaempft = $tempGedaempft + $alpha * ($value["Value"] - $tempGedaempft);
+                if (($actTime>$displayTime) && ($displayData)) echo str_pad(round($tempGedaempft,2)." °C ",12);
+
+                // starttime of Simulation is switch off date/time
+                if ($actTime>$simTime)
+                    {
+                    if ($actTime>time())  
+                        {
+                        // anderes Tau für Gebäudedämmung, kann sich anpassen
+                        $alpha2 = 1 - exp(-$dt / $tauSekunden2);
+                        }
+                    else $alpha2=0;
+
+                    // Diskretisierter PT1-Schritt: T_neu = T_alt + (1 - e^(-dt / Tau)) * (T_aussen - T_alt)
+                    $simTemp = $simTemp + $alpha2 * ($value["Value"] - $simTemp);           // Differenz aussen und gedämpfte Innentemperatur          
+                    if ($displayData) echo str_pad(round($simTemp,2)." °C ",12);
+                    if ( ($simTimeTrigger===false) && ($simTemp<$simTempTrigger) ) 
+                        {
+                        $simTimeTrigger=$actTime;
+                        if ($displayData) echo " ************* ";    
+                        }
+                    }
+                }
+            if (($actTime>$displayTime) && ($displayData)) echo "\n";
+            $oldtime=$value["TimeStamp"];
+            $oldValue=$value["Value"];                
+            }
+
+
+        return ($simTimeTrigger);
+        }
+
+
+    /*
+     * should be a SplitPanel with left and right, write temp data for one of the two sides
+     * fetch all Kessel Temperatureregister and write config to display them on Webfront
+     */
+    public function kesselToWeb()
+        {
+        $config=array();
+        $innen = $this->getDummyInstanceByName("Kessel");
+        if ($this->checkHeatingMode())
+            {
+            $config[$innen]["NAME"]="Kessel";
+            }
+        return ($config);
+
+        }
+
+    /*
+     * should be a SplitPanel with left and right, write temp data for one of the two sides
+     * fetch all Temperatureregister and write config to display them on Webfront
+     */
+    public function tempToWeb()
+        {
+        $config=array();
+        $innen = $this->getDummyInstanceByName("Innen");
+        if ($this->checkHeatingMode())
+            {
+            $config[$innen]["NAME"]="Innen";    
+            $config[$this->configHeating["aussen"]]["NAME"]="Aussen";                
+            }
+        return ($config);
 
         }
 
@@ -8328,7 +9086,7 @@ class AutosteuerungRegler extends AutosteuerungFunktionen
             }
         $tVL=GetValueFloat($this->configHeating["vorlauf"]);
         $tRL=GetValueFloat($this->configHeating["ruecklauf"]);
-        $leistungKW=$this->calcHeatingPower($tVL,$tRL);
+        $leistungKW=$this->calcHeatingPower($tVL,$tRL,1.18);
 
         // defaults are important, when heating is off the temperature difference shall be 0 
         if ($tVL<30) 
@@ -8341,7 +9099,9 @@ class AutosteuerungRegler extends AutosteuerungFunktionen
         }
 
     /*
+     * checks pumpe and brenner, id/xid from configuration
      *  evaluates last change from 0 to 1 
+     *
      */
     public function heatingTime($debug=false)
         {
@@ -8369,20 +9129,55 @@ class AutosteuerungRegler extends AutosteuerungFunktionen
         $heating=GetValue($oid);
         if ($debug) echo "Brenner Betrieb : ".($heating?"Ein":"Aus")." , unverändert seit ".nf($duration,"s")."\n";
         $heatinghours=(integer)($duration/3600);
-        $fireOnTime=false; $onFire=false; $power=0;
         if ($heatinghours==0) $heatinghours=1;
         if ($heating) return ($heatinghours);
         else return (0);
         }
 
-    public function calcHeatingPower($tVL,$tRL,$volumenstrom = 0.8)
+    /* in die andere Richtung, wie lange schon aus
+     *
+     */
+    public function pauseTime($debug=false)
+        {
+        $brenner = $this->configHeating["brenner"];
+        $xOID2 = $this->getConfig_xID($brenner,$debug);
+        //print_R($xOID2);         // entweder array oder eine normale OID
+
+        if (is_array($xOID2)) $oid=$xOID2["ID"];
+        else $oid=$xOID2;
+        //echo "Brenner Betrieb : ".GetValue($oid)."\n";
+        $variable=IPS_GetVariable($oid);
+        //print_r($variable);
+        $duration=time()-$variable["VariableChanged"];
+        $heating=GetValue($oid);
+        $heatinghours=(integer)($duration/3600);
+        if ($heatinghours==0) $heatinghours=1;
+        if ($heating===false) return ($heatinghours);
+        else return (0);
+        }
+
+    /* 
+     * Waermemenge transportiert berechnen
+     * Beruecksichtigung eines Korrekturfaktors
+     * Korrekturfaktur kann mit k=false deaktiviert werden, gleich wie k=1
+     */
+    public function calcHeatingPower($tVL,$tRL,$k=1,$ut=20,$volumenstrom = 0.8)
         {
         // Angenommener Durchfluss der Heizkreispumpe in m³/h (z. B. 0.8 m³/h)
         // Besser: Auslesen aus smarter Pumpe oder Durchflusssensor
         //$volumenstrom = 0.8;
 
         // Spreizung berechnen
-        $deltaT = $tVL - $tRL;
+        if ($k===false) 
+            {
+            $deltaT = $tVL - $tRL;
+            }
+        else
+            {
+            // Spreizung berechnen mit Korrekturfaktor und Umgebungstemperatur des Sensor
+            $deltaT = $tVL-$ut -($tRL-$ut)*$k;
+            }
+        if ($deltaT<0) $deltaT=0;               // keine negativen Werte
 
         // Wärmeleistung in kW berechnen: Q = V * 1.163 * deltaT
         $leistungKW = 0.0;
@@ -8403,52 +9198,103 @@ class AutosteuerungRegler extends AutosteuerungFunktionen
         }
 
 
-    /* reads history for calc Firepower
+    /* reads history of quantified Burner Firing electrical Power measured
+     * used to calc Firepower and Gasoline consumption
      *
      */
-    public function calcFirePower($statusID,$hours=5,$debug=false)
+   public function calcFirePower($statusID,$hours=5,$debug=false)
         {
         $fireOnTime=false; $onFire=false; $power=0;
         $maxpower=20; $delay=10; $literhour=2;          // 20 kW und 2 Liter pro Stunde
+        $success=0; $retry=0;
         $archiveOps = new archiveOps();  
         $config=array();
         $config["Warning"]=false;            
-        $config["StartTime"]=time()-8*60*60;                // kann Unixtime und string Time
+        $config["StartTime"]=time()-($hours+3)*60*60;                // kann Unixtime und string Time
         $data=$archiveOps->getValues($statusID,$config);
         //print_R($data["Values"]);
-
-        foreach ($data["Values"] as $entry)
+        if ( (isset($data["Values"])) && (sizeof($data["Values"])>0) )
             {
-            $duration=$entry["Duration"];
-            $time=$entry["TimeStamp"];
-            $value=$entry["Value"];
-            if ($value>1) 
-                	{
-                    if ($onFire===false)
-                        {
-                        if ($debug>1) echo date("d.m.Y H:i",$entry["TimeStamp"]).str_pad("",10)."   Fire On \n";
-                        $onFire=true;
-                        $fireOnTime=$entry["TimeStamp"];
-                        }
-                    }
-            if ($value==1) 
+            foreach ($data["Values"] as $entry)
                 {
-                $onFire=false;
-                $duration=time()-$time;
-                if ($debug) echo date("d.m.Y H:i",$entry["TimeStamp"])."  ".str_pad(nf($duration,"s"),10);
-                if ($fireOnTime) 
+                //$duration=$entry["Duration"];
+                $time=$entry["TimeStamp"];
+                $value=$entry["Value"];
+                
+                if ($value>1) 
+                        {
+                        if ($onFire===false)
+                            {
+                            if ($debug>1) echo date("d.m.Y H:i:s",$entry["TimeStamp"]).str_pad("",10)."  $value  Fire On \n";
+                            $onFire=true;
+                            $fireOnTime=$entry["TimeStamp"];
+                            }
+                        elseif ($debug>1) echo date("d.m.Y H:i:s",$entry["TimeStamp"]).str_pad("",10)."  $value  \n";
+                        }
+                if ($value==1) 
                     {
-                    $firetime=$entry["TimeStamp"]-$fireOnTime;
-                    if ($debug) echo " Firetime ".nf($firetime,"s");
-                    if ( ($duration<($hours*60*60)) && ($firetime>60) ) $power += ($firetime-$delay);     
+                    $onFire=false;
+                    $duration=time()-$time;
+                    if ($debug) echo date("d.m.Y H:i:s",$entry["TimeStamp"])."  ".str_pad(nf($duration,"s"),10);
+                    if ($fireOnTime) 
+                        {
+                        $firetime=$entry["TimeStamp"]-$fireOnTime;
+                        if ($debug>1) echo "$value ";
+                        //if ($debug) 
+                            {
+                            if ($firetime<=60)
+                                {
+                                if ($debug>1) echo " Retry/Fail ".nf($firetime,"s");
+                                $retry++;
+                                } 
+                            else 
+                                {
+                                echo " Firetime ".nf($firetime,"s");
+                                $success++;
+                                }
+                            }
+                        if ( ($duration<($hours*60*60)) && ($firetime>60) ) $power += ($firetime-$delay);     
+                        }
+                    if ($debug) echo "\n";
                     }
-                if ($debug) echo "\n";
                 }
+            if ($debug) echo "Firetime is ".nf($power,"s")." in $hours Hours. \n";
+            $result["Firetime"]["Periode"]      = $power;
+            $result["Firetime"]["24Hours"]      = $power/24*$hours;
+            $result["Firetime"]["Percentage"]   = round($power/$hours/3600*100,1);
+            $result["Gasoline"]["Periode"]      = round($power/3600*$literhour,1);
+            $result["Gasoline"]["Hour"]         = round($power/3600/$hours*$literhour,1);
+            $result["Gasoline"]["24Hours"]      = round($power/3600/$hours*24*$literhour,1);            
+            $result["Energy"]["Periode"]        = round($power/3600*$maxpower,3);                     // in kWh
+            $result["Energy"]["24Hours"]        = round($power/3600/$hours*24*$maxpower,3);                     // in kWh
+            $result["Statistics"]["Fired"]      = $success;
+            $result["Statistics"]["Failed"]     = $retry;
+            return ($result);
             }
-        $power = $power/$hours;
-        echo "Firetime  ".round($power/36)." % of hour.  ".round($power/3600*24*2,1)." Liter per Day. Maxpower is $maxpower kW with $literhour l/h \n";
-        return ($power/3600*$maxpower*1000);
+        else
+            {
+            $result["Firetime"]["Periode"]=0;
+            $result["Gasoline"]["Periode"]=0;
+            $result["Energy"]["Periode"]=0;    
+            }
         }
+
+    /* 
+     * simple style , value of statusID shall be 1, last change shall be older than 1 Minute
+     * 1 minute needed, if there is a problem and burner tries again
+     * false as long minimum grace time is not expired
+     * if there is kesseltemp too, add this as additional safety, must be higher than 60 degrees
+     * called by statemachine every 60 secs when pending off state
+     * when pending on this is also recommended without kesseltemp. 
+     */ 
+    public function calcFirePause($statusID,$kesseltempID=false)
+        {
+        $variable=IPS_GetVariable($statusID);           // read Status
+        $duration=time()-$variable["VariableChanged"];
+        $heating=GetValue($statusID);
+        $pause=(integer)($duration/60);
+        }
+
 
     public function calcWaterPower($heatingPowerID,$hours=5,$debug=false)
         {
@@ -8512,6 +9358,57 @@ class AutosteuerungRegler extends AutosteuerungFunktionen
         }
 
 
+    /**
+    * Returns interpolated hourly values.
+    */
+    public function interpolateHourly(array $data,$debug=false): array
+        {
+        $result = [];
+        $index=0;
+        for ($i = 0; $i < count($data) - 1; $i++) 
+            {
+            if ($debug>1) echo date("d.m.Y H:i",$data[$i]["TimeStamp"])."   ".$data[$i]["Value"]."   -->   ";
+            //$t1 = strtotime($data[$i]['TimeStamp']);
+            $t1 = $data[$i]['TimeStamp'];
+            $v1 = $data[$i]['Value'];
+            if ($debug>1) echo date("d.m.Y H:i",$data[$i+1]["TimeStamp"])."   ".$data[$i+1]["Value"]."\n";
+            //$t2 = strtotime($data[$i + 1]['TimeStamp']);
+            $t2 = $data[$i + 1]['TimeStamp'];
+            $v2 = $data[$i + 1]['Value'];
+
+            // first full hour after t1
+            $hour = strtotime(date('Y-m-d H:00:00', $t1));
+
+            if ($hour < $t1) {
+                $hour += 3600;
+            }
+
+            while ($hour <= $t2) {
+
+                $factor = ($hour - $t1) / ($t2 - $t1);
+
+                $value = $v1 + ($v2 - $v1) * $factor;
+
+                $newentry = [
+                    //'TimeStamp' => date('Y-m-d H:00:00', $hour),
+                    'TimeStamp' => $hour,
+                    'Value' => round($value, 3)
+                ];
+                $timeok=true;
+                if ((isset($result[$index-1])) && ($result[$index-1]["TimeStamp"]==$newentry["TimeStamp"])) $timeok=false;
+                if ($timeok) 
+                    {
+                    $result[$index]=$newentry;
+                    if ($debug) echo "    ".date("d.m.Y H:i:s",$newentry["TimeStamp"])."   ".$newentry["Value"]."\n";
+                    $index++;
+                    }
+                $hour += 3600; 
+            }
+        }
+
+        return $result;
+    }
+
     /* getConfig_xID
      * immer gleiche Vereinheitlichung der Auswertung für OIDs, auch in IPSHeat
      * kann ein Integerwert oder ein String sein
@@ -8574,7 +9471,136 @@ class AutosteuerungRegler extends AutosteuerungFunktionen
         return ($result);
         }  
 
-	}
+
+    public function createInnen($innennames)
+        {
+        $config=array();
+        $pos=10;
+        foreach ($this->innen as $index=>$innen)
+            {
+            $name="Innen".$pos;
+            if (isset($innennames[$index])) $name=$innennames[$index];
+            $config[$innen]["Name"]=$innennames[$index];
+            $config[$innen]["Pos"]=$pos;
+            $pos += 10;
+            }
+        return($config);
+        }
+
+
+    public function doInnenStatistics($debug=false)
+        {
+        $archiveOps = new archiveOps(); 
+        $result=array();
+            $config=array();
+            $config["StartTime"]=time()-7*24*60*60;                // kann Unixtime und string Time, eine Woche zurück
+
+            $innennames=array();
+            if (isset($this->configHeating["innennames"])) $innennames=$this->configHeating["innennames"];
+            $configInnen=$this->createInnen($innennames);
+            //print_r($configInnen);
+            //$oid=$this->createDummyToWeb("Innen", $this->createInnen($innennames));
+            $first=true;
+            foreach ($configInnen as $tempId => $tempdata)
+                {
+                $indoorID=$tempId;
+                $data=$archiveOps->getValues($indoorID,$config);
+                $starttime=$data["Description"]["Intervals"]["anfang"];
+                $endtime=$data["Description"]["Intervals"]["ende"];
+                if ($first)
+                    {
+                    if ($debug) echo "Evaluation of Data from ".date("d.m.Y H:i",$starttime)." to ".date("d.m.Y H:i",$endtime)."\n";
+                    $first=false;
+                    }
+                $maxtemp=$data["Description"]["MaxMin"]["Max"]["Value"];
+                $maxtime=$data["Description"]["MaxMin"]["Max"]["TimeStamp"];
+                $mintemp=$data["Description"]["MaxMin"]["Min"]["Value"];
+                $mintime=$data["Description"]["MaxMin"]["Min"]["TimeStamp"];
+                $result[$tempId]["Name"]=$tempdata["Name"];
+                $result[$tempId]["Value"]=GetValue($tempId);
+                $result[$tempId]["Maxtemp"]["Value"]=$maxtemp;
+                $result[$tempId]["Maxtemp"]["TimeStamp"]=$maxtime;
+                $result[$tempId]["Mintemp"]["Value"]=$mintemp;
+                $result[$tempId]["Mintemp"]["TimeStamp"]=$mintime;
+                if ($debug)
+                    {
+                    echo "Temp Innen ".str_pad($tempdata["Name"],10)." : ".GetValueIfFormatted($tempId)."   ";
+                    //echo "\n";                
+                    echo "    Max   ".$maxtemp."°C at ".date("D d.m.Y H:i",$maxtime)."   ";
+                    //echo "\n";
+                    echo "    Min   ".$mintemp."°C at ".date("D d.m.Y H:i",$mintime)."\n";
+                    }
+                }
+            
+        return($result);
+        }
+
+    public function createKessel()
+        {
+        $config=array();
+        $config[$this->configHeating["kesseltemp"]]["Name"]="Kessel";
+        $config[$this->configHeating["kesseltemp"]]["Pos"]=10;
+        $config[$this->configHeating["vorlauf"]]["Name"]="Vorlauf";
+        $config[$this->configHeating["vorlauf"]]["Pos"]=20;
+        $config[$this->configHeating["ruecklauf"]]["Name"]="Ruecklauf";
+        $config[$this->configHeating["ruecklauf"]]["Pos"]=30;
+        return($config);
+        }
+        
+    /*
+     *  links kann nicht direkt Innen sein, muss konvertiert werden
+     */
+    public function createDummyToWeb($name, $links,$debug=false)
+        {
+        $wfc = new WfcHandling();
+        if ($debug) echo "createDummyToWeb($name \n"; 
+        if ($this->categoryId_Heating)
+            {
+            $found=$this->getDummyInstanceByName($name);
+            if ($found)     //checkInstance
+                {
+                $InnenId = $found;
+                }
+            else
+                {       // createInstance {485D0419-BE97-4548-AA9C-C083EB82E61E}
+                $InnenId = IPS_CreateInstance("{485D0419-BE97-4548-AA9C-C083EB82E61E}");
+                IPS_SetParent($InnenId, $this->categoryId_Heating);
+                IPS_SetName($InnenId, "Innen");
+                }
+            foreach ($links as $link=>$entry)
+                {
+                $pos=0;
+                if (is_array($entry))
+                    {
+                    if (isset($entry["Name"])) $name=$entry["Name"];
+                    if (isset($entry["Pos"])) $pos=$entry["Pos"];
+                    }
+                else $name=$entry;
+                $wfc->createLinkByDestination($name, $link, $InnenId, $pos); 
+                }
+            return ($InnenId);
+            }
+        else 
+            {
+            echo "Error, createDummyToWeb, category not assigned : ".$this->categoryId_Heating."\n";
+            return(false);
+            }
+        }
+
+    public function getDummyInstanceByName($name)
+        {
+        $found=false;
+        $ipsOps = new ipsOps();
+        $childs=$ipsOps->getChildrenIDsOfType($this->categoryId_Heating,OBJECTTYPE_INSTANCE);            
+        foreach ($childs as $child)
+            {
+            if (IPS_GetName($child)==$name) $found=$child;    
+            }
+        return($found);
+        }
+
+
+	}           // end of class
 	
 /*****************************************************************************************************
  *
@@ -9670,7 +10696,29 @@ class AutosteuerungMeasure extends AutosteuerungFunktionen
         //echo "measureExecute ".json_encode($command)."\n";
         if (isset($command["FUNCTION"])) $function=$command["FUNCTION"];        // Zusatzparameter
         else $function=false;
-        if (isset($command["DISPLAY"])) $display=$command["DISPLAY"];        // Zusatzparameter
+        if (isset($command["DISPLAY"]))      // Zusatzparameter, findet automatisch den richtigen Type Variable
+            {
+            $display=$command["DISPLAY"];       
+            /*echo "   \"$display\" :  ";
+            $displayID=false;
+            $childs=IPS_GetChildrenIDs($this->CategoryId_Ansteuerung);
+            foreach ($childs as $child)
+                {
+                echo IPS_GetName($child)."  ";
+                if (IPS_GetName($child)==$display)
+                    {
+                    $objectinfo=IPS_GetObject($child);
+                    if ($objectinfo["ObjectType"]==OBJECTTYPE_VARIABLE)
+                        {
+                        $displayID=$child;
+                        break;
+                        }
+                    }
+                }
+            echo "\n";*/
+            $displayID = @IPS_GetVariableIDByName($display,$this->CategoryId_Ansteuerung);
+            echo "measureExecute found new link target: $display found in ".$this->CategoryId_Ansteuerung." here $displayID \n";    
+            }        
         else $display="Measurement";        
         if (isset($command["LOG"])) echo "Logging expected with ".$command["LOG"]." if Switch shows green\n";
         if (isset($command["SWITCH"])) 
@@ -9740,7 +10788,7 @@ class AutosteuerungMeasure extends AutosteuerungFunktionen
         
 
         $archOps = new archOps();
-        $displayID = IPS_GetVariableIDByName($display,$this->CategoryId_Ansteuerung);             // Integer
+        $displayID = @IPS_GetVariableIDByName($display,$this->CategoryId_Ansteuerung);             // Integer
         if ($displayID) echo "Variable Display happens at $displayID ".IPS_GetName($displayID)."\n";
         else echo "No variable Display happens in Autosteuerung Tab.\n";
 
@@ -9755,7 +10803,7 @@ class AutosteuerungMeasure extends AutosteuerungFunktionen
             $archOps->setArchiving($variableLoggedId,1,0);
             $archOps->setArchiving($variableID,1,0);
     		// definition CreateLinkByDestination ($Name, $LinkChildId, $ParentId, $Position, $ident="") 
-            CreateLinkByDestination(IPS_GetName($variableID), $variableID, $displayID,10);            
+            if ($displayID) CreateLinkByDestination(IPS_GetName($variableID), $variableID, $displayID,10);            
             }
         $statusLoggedId = CreateVariableByName($deviceNameId,"Status_".IPS_GetName($variableID),1);             // integer
         $archOps->setArchiving($statusLoggedId,1,0);
@@ -10912,6 +11960,8 @@ class AutosteuerungWebfront
 
     /* die Zusammenstellung der Wwebfrontlinks hat sich geändert, aus webfrontlinks und tabs eine gemeinsame Darstellung machen
      * die Tabs haben ein neues übersichtlicheres Format, aktuell nur bei Denon und Measurement
+     * liest die Autosteuerung_GetWebFrontConfiguration ein
+     *           array(IPSHEAT_WFCSPLITPANEL,   'AutoTPADetails_Links',   'AutoTPABetriebsstunden',   'Auswertung' ,null,0,70,0,0,'true'),	            // triggert auf Auswertung
      */
     function arrangeWebfrontLinks($webfront_links,$tabs,$user,$debug=false)
         {
@@ -10931,7 +11981,7 @@ class AutosteuerungWebfront
                 $data["vertical"]=$entry[5];
                 $data["width"]=$entry[6]; 
                 $data["icon"]=$entry[4];                
-                if ( (isset($entry[3])) && ($entry[3] != "") ) $webFrontConfiguration[$entry[3]]=$data;
+                if ( (isset($entry[3])) && ($entry[3] != "") ) $webFrontConfiguration[$entry[3]]=$data;             // Trigger übernommen, Tabname
                 else $webFrontConfiguration[$index]=$data;
                 }
             }
@@ -10969,6 +12019,10 @@ class AutosteuerungWebfront
                             foreach ($entry as $subindex => $subentry)
                                 {
                                 if (is_numeric($subindex)) $numeric=true;
+                                else
+                                    {
+                                    if (isset($webFrontConfiguration[$subindex])) $tabs[$tab][$index][$subindex]["@CONFIG"] = $webFrontConfiguration[$subindex];    
+                                    }
                                 }
                             if (($numeric==false) && (isset($webFrontConfiguration[$index])) ) $tabs[$tab][$index]["@CONFIG"] = $webFrontConfiguration[$index];
                             break;

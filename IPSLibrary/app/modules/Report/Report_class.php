@@ -80,8 +80,7 @@
         private $configuration;                 // Gesamtkonfiguration
         private $debug;                         // aditional echo logging 
 
-		/**
-		 * @public
+		/* ReportControl_Manager::__construct
 		 *
 		 * Initialisierung des IPSReport_Manager Objektes
 		 *
@@ -106,7 +105,19 @@
             else $this->newstyle=false;
 		    }
 
+        /* ReportControl_Manager::setDebug
+         * nachtraegliches Setzen des Debug Modes
+         */
+        public function setDebug($debug=false)
+            {
+            $this->debug=$debug;                
+            }
 
+        /* ReportControl_Manager::setConfiguration
+         * liest Report_GetConfiguration und macht Abgleich mit setValueConfiguration
+         *      muss Name haben, wenn es Namen gibt dann muss es auch in der config einen Eintrag geben
+         *
+         */
         private function setConfiguration()
             {
             $config = Report_GetConfiguration();                            // detaillierte Konfiguration für jeden einzelnen Report, Index ist ein eindeutiger Name
@@ -134,6 +145,9 @@
             return($config); 
             }
 
+        /* ReportControl_Manager::setValueConfiguration
+         * liest Report_GetValueConfiguration
+         */
         private function setValueConfiguration()
             {
             $config = Report_GetValueConfiguration();
@@ -1098,8 +1112,9 @@
          *
          * CfgDaten             wird als Pointer übergeben, ist die Highcharts Config
          * $report_config       ist die eigentliche Konfiguration aus dem Konfig File
+         * $chartType 
          *
-         *  beinhaltet:
+         * CfgDaten beinhaltet standardmaessig :
          *      title
          *      type
          *      aggregate
@@ -1109,10 +1124,10 @@
          *
          * $displaypanel        =$associationsValues[$valueIdx];   welches Feld in getConfiguration 
          *
-         * $report_config[] steuert die Anzeige
-         *      configuration
-         *      configseries
-         *      Module
+         * $report_config[] steuert die Anzeige, hier mit den Erweiterungen
+         *      configuration                   neu für EasyChart
+         *      configseries                    neu für EasyTrend
+         *      Module                          definiert welche Zusatzfunktion man haben möchte
          *      series                          die Datenquellen mit zusätzlichen parametern
          *          type
          *          ID
@@ -1126,7 +1141,10 @@
         
         private function compileConfiguration(&$CfgDaten,$report_config,$chartType=IPSRP_TYPE_KWH)
             {
-            /* Konfiguration vorverarbeiten, series kann automatisch erstellt werden 
+            /* reads ReportDataSelector to select, config is two tables that have to be aligned
+             * writes selectAssociation from $report_config["configuration"], takes the given arrangement and looks for select as index
+             * 
+             * Konfiguration vorverarbeiten, series kann automatisch erstellt werden 
              * funktioniert für EASYCHART und EASYTREND
              * EASYCHART verweist in einem Array auf anzuzeigende Depotnamen. Der Link geht je Depotnamen auf die Depotkonfiguration als json encoded. Diese könnten auch variable erstellt werden
              *
@@ -1211,7 +1229,7 @@
                 else echo "selected Report (".json_encode($report_config).") : -> implemented\n";
                 print_R($CfgDaten);
                 echo "Es wurden folgende Linien definiert:\n";
-                print_R($report_config['series']);
+                if (isset($report_config['series'])) print_R($report_config['series']);
                 }
             
             if (isset($report_config["title"])) $CfgDaten['title']['text']    = $report_config["title"];
@@ -1230,392 +1248,551 @@
             if (isset($report_config["Module"])) $moduleDefault=strtoupper($report_config["Module"]);
 
             $archiveOps = new archiveOps();  
-
-            /* zuerst yaxis erfassen und schreiben */
-            $index=0;
-            foreach ($report_config['series'] as $name=>$defserie)
+            if ($moduleDefault=="HEATING") 
                 {
-                $serie=array();         // imer neu initialisiseren
-                $scale=0;
-                /* Name sind die einzelnen Kurven und defserie die Konfiguration der einzelnen Kurven */
-                $serie['name'] = $name;
+                echo "Heating Module:\n";
+                $module=$moduleDefault;
+                /* result expected, one or more series with data
+                 * creates array serie
+                 *      name
+                 *      step
+                 *      type
+                 *      ID          OID of archive
+                 *      Module
+                 *
+                 * am Ende erfolgt $CfgDaten['series'][$index++] = $serie;
+                 */
+            	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+        		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+		        $moduleManager = new IPSModuleManager('Autosteuerung',$repository);
+                $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+                $categoryId_Global  = IPS_GetCategoryIDByName('Global',   $CategoryIdData); 
+                $outdoorID          = IPS_GetObjectIDByName("OutdoorTemp",$categoryId_Global);                
 
-                if (isset($report_config["step"])) $serie['step'] = $report_config["step"];
+                $index=0;                
 
-                if (isset($report_config["type"])) $serie['type'] = $report_config["type"];
-                else $serie['type'] = $defserie['type'];
-                
-                if (isset($defserie["Module"])) $module=strtoupper($defserie["Module"]);
-                else $module=$moduleDefault;
+                $analyseConfig1=["StartTime"=>$CfgDaten["StartTime"],"EndTime"=>$CfgDaten["EndTime"]];
+                //$analyseConfig1["Aggregated"]="daily";
+                $analyseConfig1["meansRoll"]["direction"]="Backward";                            // Messwertedarstellung 0 ist der älteste Wert, der nächste Wert ist schon teil des Mittelwertes
+                $analyseConfig1["meansRoll"]["TimeStampPos"]="End";                                             // wenn nicht Mid, wird zum Zeitstempel, an dem berechnet wurde abgespeichert
+                $resultAll = $archiveOps->getValues($outdoorID,$analyseConfig1,($this->debug)); 
+                $result=$resultAll["Values"];                 // true mit Debug, aus dem Archiv geladene Datenserie nicht einschränken
 
-                $analyseConfig = ["StartTime"=>$CfgDaten["StartTime"],"EndTime"=>$CfgDaten["EndTime"]];
-                if ($this->debug)
-                    { 
-                    echo "RebuildGraph: Kurve : ".$name." ermitteln, Module $module : ".json_encode($defserie)."\n";
-                    //print_r($defserie); echo "\n";
-                    }
+                IPSUtils_Include ('Autosteuerung_Configuration.inc.php', 'IPSLibrary::config::modules::Autosteuerung');
+                IPSUtils_Include ("Autosteuerung_Class.inc.php","IPSLibrary::app::modules::Autosteuerung"); 
 
-                 /* für EASY,EASYTREND und PROFESSIONAL die Serie der Daten selbst schreiben und nicht auf ein Archiv verweisen 
-                  * compile configuration Highcharts
-                  */
-                switch ($module)                   
+                $categoryId_Autosteuerung  = IPS_GetCategoryIDByName("Ansteuerung", $CategoryIdData);
+
+                $ar = new AutosteuerungRegler();            // Heizungssteuerung, immer in der Loop
+                $ar->DoHeating($categoryId_Autosteuerung); 
+                $result = $ar->interpolateHourly(array_merge($result,$ar->prognoseWeatherData()));
+
+        $temp2=array();
+        $index=0; $first=true;
+        $tauStunden = 12;
+        $tauSekunden = $tauStunden * 3600;
+
+        foreach ($result as $index=>$value)         // gedaempften verlauf erzeugen
+            {
+            $actTime=$value["TimeStamp"];
+            //if (($actTime>$displayTime) && ($displayData))  echo str_pad($index,3)."   ".date("d.m.Y H:i:s",$actTime)."   ".str_pad($value["Value"]." °C",15);
+            if ($first)
+                {
+                $first=false;
+                $tempGedaempft=$value["Value"];
+                $temp2[$index]["Value"]=$tempGedaempft;
+                $temp2[$index]["TimeStamp"]=$actTime;
+                }
+            else
+                {
+                $dt = $value["TimeStamp"] - $oldtime;
+                // PT1-Filter Glättungskoeffizient Alpha: Alpha = 1 - e^(-dt / Tau)
+                $alpha = 1 - exp(-$dt / $tauSekunden);
+                // Formel: T_neu = T_alt + Alpha * (T_aktuell - T_alt)
+                $tempGedaempft = $tempGedaempft + $alpha * ($value["Value"] - $tempGedaempft);
+                //if (($actTime>$displayTime) && ($displayData)) echo str_pad(round($tempGedaempft,2)." °C ",12);
+                $temp2[$index]["Value"]=$tempGedaempft;
+                $temp2[$index]["TimeStamp"]=$actTime;
+
+                /* starttime of Simulation is switch off date/time
+                if ($actTime>$simTime)
                     {
-                    case "PROFESSIONAL":
-                        $oid=$defserie['Id'];
-                        $analyseConfig1=$analyseConfig;
-                        $analyseConfig1["Aggregated"]="daily";
-                        $analyseConfig1["meansRoll"]["direction"]="Backward";                            // Messwertedarstellung 0 ist der älteste Wert, der nächste Wert ist schon teil des Mittelwertes
-                        $analyseConfig1["meansRoll"]["TimeStampPos"]="End";                                             // wenn nicht Mid, wird zum Zeitstempel, an dem berechnet wurde abgespeichert
-                        $resultAll = $archiveOps->getValues($oid,$analyseConfig1,($this->debug));                    
-                        if ( (isset($defserie["display"])) && (strtoupper($defserie["display"])=="MEANSROLL") )
-                            {
-                            if ($this->debug) echo "Modul Professional ".count($result)." Werte aus dem laufenden Mittelwert für Wochen verarbeiten.\n";
-                            $result=$resultAll["MeansRoll"]["Var"];
-                            }
-                        elseif ( (isset($defserie["display"])) && (strtoupper($defserie["display"])=="MEANSROLLMONTH") )
-                            {
-                            if ($this->debug) echo "Modul Professional ".count($result)." Werte aus dem laufenden Mittelwert für Monate verarbeiten.\n";
-                            $result=$resultAll["MeansRoll"]["Month"];
-                            }
-                        elseif ( (isset($defserie["display"])) && (strtoupper($defserie["display"])=="MEANSROLLWEEK") )
-                            {
-                            if ($this->debug) echo "Modul Professional ".count($result)." Werte aus dem laufenden Mittelwert für Woche verarbeiten.\n";
-                            $result=$resultAll["MeansRoll"]["Week"];
-                            }
-                        elseif ( (isset($defserie["display"])) && (strtoupper($defserie["display"])=="TRENDMONTH") )
-                            {
-                            if ($this->debug) 
-                                {
-                                echo "Modul Professional ".count($result)." Werte aus dem laufenden Mittelwert für Monateverarbeiten.\n";
-                                if (isset($defserie["display"])) echo "Einstellung ".$defserie["display"]." wurde nicht erkannt\n";
-                                }
-                            $result=$resultAll["Description"]["Interval"]["Month"]["MeansVar"];
-                            //print_r($result);
-                            }
-                        else 
-                            {
-                            $result=$resultAll["Values"];                 // true mit Debug, aus dem Archiv geladene Datenserie nicht einschränken
-                            if ($this->debug) echo "Modul Professional ".count($result)." Werte verarbeiten. Display normale Werte.\n";
-                            }
-                        $scale=1;
-                        $showmax=0; $showcount=0;
-                        if ( ($this->debug) && ($showmax>0) ) echo "      Darstellung der Daten für die Anzeige von $module:\n";
-                        foreach ($result as $entry)
-                            {
-                            //if ($scale==0) $scale=100/$entry["Value"];
-                            if ( ($this->debug) && ($showcount < $showmax) ) echo "      ".date("d.m. H:i:s",$entry["TimeStamp"])."  ".($entry["Value"]*$scale)."\n";
-                            $showcount++;
-                            if (isset($entry["Value"])) $serie['data'][] = ["TimeStamp" =>  $entry["TimeStamp"],"y" => ($entry["Value"]*$scale)];
-                            if (isset($entry["Avg"])) $serie['data'][] = ["TimeStamp" =>  $entry["TimeStamp"],"y" => ($entry["Avg"]*$scale)];               // auch für aggregated Werte
-                            }
+                    if ($actTime>time())  
+                        {
+                        // anderes Tau für Gebäudedämmung, kann sich anpassen
+                        $alpha2 = 1 - exp(-$dt / $tauSekunden2);
+                        }
+                    else $alpha2=0;
+                    // Diskretisierter PT1-Schritt: T_neu = T_alt + (1 - e^(-dt / Tau)) * (T_aussen - T_alt)
+                    $simTemp = $simTemp + $alpha2 * ($value["Value"] - $simTemp);           // Differenz aussen und gedämpfte Innentemperatur          
+                    //if ($displayData) echo str_pad(round($simTemp,2)." °C ",12);
+                    if ( ($simTimeTrigger===false) && ($simTemp<$simTempTrigger) ) 
+                        {
+                        $simTimeTrigger=$actTime;
+                        //if ($displayData) echo " ************* ";    
+                        }
+                    } */
+                }
+            //if (($actTime>$displayTime) && ($displayData)) echo "\n";
+            $oldtime=$value["TimeStamp"];
+            $oldValue=$value["Value"];   
+            $index++;             
+            }
 
-                        break;
-                    case "EASYTREND":
-                    case "EASY":
-                        $oid=$defserie['Id'];
-                        IPSUtils_Include ("Guthabensteuerung_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");                
-                        IPSUtils_Include ("Selenium_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");                
-                        $seleniumEasycharts = new SeleniumEasycharts();  
-                        $split=$seleniumEasycharts->getSplitfromOid($oid);
-                        $analyseConfig1=$analyseConfig;
-                        if ($split) $analyseConfig1["Split"]=$split;
-                        if ($this->debug) echo "-------------\nReport calls analyseValues($oid,...)\n"; 
-                        $resultAll = $archiveOps->analyseValues($oid,$analyseConfig1,$this->debug);          // oid wurde
-                        if ($module=="EASYTREND") 
-                            {
-                            //if ($this->debug) print_r($resultAll);
 
-                            if (strtoupper($defserie["display"])=="MEANSROLL") 
+                $CfgDaten["EndTime"]=$CfgDaten["EndTime"]+5*24*60*60;
+
+                $scale=1;
+                $serie=array();
+                $serie['name'] = "Heating";
+                $serie['type'] = "line";
+                $showmax=0; $showcount=0;
+                foreach ($result as $entry)
+                    {
+                    //if ($scale==0) $scale=100/$entry["Value"];
+                    if ( ($this->debug) && ($showcount < $showmax) ) echo "      ".date("d.m. H:i:s",$entry["TimeStamp"])."  ".($entry["Value"]*$scale)."\n";
+                    $showcount++;
+                    if (isset($entry["Value"])) $serie['data'][] = ["TimeStamp" =>  $entry["TimeStamp"],"y" => ($entry["Value"]*$scale)];
+                    if (isset($entry["Avg"])) $serie['data'][] = ["TimeStamp" =>  $entry["TimeStamp"],"y" => ($entry["Avg"]*$scale)];               // auch für aggregated Werte
+                    }   
+                $CfgDaten['series'][$index++] = $serie;   
+
+                $scale=1;
+                $serie=array();
+                $serie['name'] = "HeatingTemp";
+                $serie['type'] = "line";
+                $showmax=0; $showcount=0;
+                foreach ($temp2 as $entry)
+                    {
+                    //if ($scale==0) $scale=100/$entry["Value"];
+                    if ( ($this->debug) && ($showcount < $showmax) ) echo "      ".date("d.m. H:i:s",$entry["TimeStamp"])."  ".($entry["Value"]*$scale)."\n";
+                    $showcount++;
+                    if (isset($entry["Value"])) $serie['data'][] = ["TimeStamp" =>  $entry["TimeStamp"],"y" => ($entry["Value"]*$scale)];
+                    if (isset($entry["Avg"])) $serie['data'][] = ["TimeStamp" =>  $entry["TimeStamp"],"y" => ($entry["Avg"]*$scale)];               // auch für aggregated Werte
+                    }   
+                $CfgDaten['series'][$index++] = $serie;   
+
+                }
+            else
+                {
+                //echo "Module Default : $moduleDefault \n";
+                //print_r($report_config);
+
+
+
+                /* zuerst yaxis erfassen und schreiben */
+                $index=0;
+                foreach ($report_config['series'] as $name=>$defserie)
+                    {
+                    $serie=array();         // imer neu initialisiseren
+                    $scale=0;
+                    /* Name sind die einzelnen Kurven und defserie die Konfiguration der einzelnen Kurven */
+                    $serie['name'] = $name;
+
+                    if (isset($report_config["step"])) $serie['step'] = $report_config["step"];
+
+                    if (isset($report_config["type"])) $serie['type'] = $report_config["type"];
+                    else $serie['type'] = $defserie['type'];
+                    
+                    if (isset($defserie["Module"])) $module=strtoupper($defserie["Module"]);
+                    else $module=$moduleDefault;
+
+                    $analyseConfig = ["StartTime"=>$CfgDaten["StartTime"],"EndTime"=>$CfgDaten["EndTime"]];
+                    if ($this->debug)
+                        { 
+                        echo "RebuildGraph: Kurve : ".$name." ermitteln, Module $module : ".json_encode($defserie)."\n";
+                        //print_r($defserie); echo "\n";
+                        }
+
+                    /* für EASY,EASYTREND und PROFESSIONAL die Serie der Daten selbst schreiben und nicht auf ein Archiv verweisen 
+                    * compile configuration Highcharts
+                    */
+                    switch ($module)                   
+                        {
+                        case "PROFESSIONAL":
+                            $oid=$defserie['Id'];
+                            $analyseConfig1=$analyseConfig;
+                            $analyseConfig1["Aggregated"]="daily";
+                            $analyseConfig1["meansRoll"]["direction"]="Backward";                            // Messwertedarstellung 0 ist der älteste Wert, der nächste Wert ist schon teil des Mittelwertes
+                            $analyseConfig1["meansRoll"]["TimeStampPos"]="End";                                             // wenn nicht Mid, wird zum Zeitstempel, an dem berechnet wurde abgespeichert
+                            $resultAll = $archiveOps->getValues($oid,$analyseConfig1,($this->debug));                    
+                            if ( (isset($defserie["display"])) && (strtoupper($defserie["display"])=="MEANSROLL") )
                                 {
-                                if ($this->debug) echo "Modul Easytrend ".count($result)." Werte aus dem laufenden Mittelwert für Wochen verarbeiten.\n";
+                                if ($this->debug) echo "Modul Professional ".count($result)." Werte aus dem laufenden Mittelwert für Wochen verarbeiten.\n";
                                 $result=$resultAll["MeansRoll"]["Var"];
                                 }
-                            elseif (strtoupper($defserie["display"])=="MEANSROLLMONTH") 
+                            elseif ( (isset($defserie["display"])) && (strtoupper($defserie["display"])=="MEANSROLLMONTH") )
                                 {
-                                if ($this->debug) echo "Modul Easytrend ".count($result)." Werte aus dem laufenden Mittelwert für Monateverarbeiten.\n";
+                                if ($this->debug) echo "Modul Professional ".count($result)." Werte aus dem laufenden Mittelwert für Monate verarbeiten.\n";
                                 $result=$resultAll["MeansRoll"]["Month"];
                                 }
-                            elseif (strtoupper($defserie["display"])=="TRENDMONTH") 
+                            elseif ( (isset($defserie["display"])) && (strtoupper($defserie["display"])=="MEANSROLLWEEK") )
                                 {
-                                if ($this->debug) echo "Modul Easytrend ".count($result)." Werte aus dem laufenden Mittelwert für Monateverarbeiten.\n";
+                                if ($this->debug) echo "Modul Professional ".count($result)." Werte aus dem laufenden Mittelwert für Woche verarbeiten.\n";
+                                $result=$resultAll["MeansRoll"]["Week"];
+                                }
+                            elseif ( (isset($defserie["display"])) && (strtoupper($defserie["display"])=="TRENDMONTH") )
+                                {
+                                if ($this->debug) 
+                                    {
+                                    echo "Modul Professional ".count($result)." Werte aus dem laufenden Mittelwert für Monateverarbeiten.\n";
+                                    if (isset($defserie["display"])) echo "Einstellung ".$defserie["display"]." wurde nicht erkannt\n";
+                                    }
                                 $result=$resultAll["Description"]["Interval"]["Month"]["MeansVar"];
                                 //print_r($result);
                                 }
                             else 
                                 {
                                 $result=$resultAll["Values"];                 // true mit Debug, aus dem Archiv geladene Datenserie nicht einschränken
-                                if ($this->debug) echo "Modul Easytrend ".count($result)." Werte verarbeiten.\n";
+                                if ($this->debug) echo "Modul Professional ".count($result)." Werte verarbeiten. Display normale Werte.\n";
                                 }
                             $scale=1;
-                            }
-                        else 
-                            {
-                            if (is_array($resultAll))
+                            $showmax=0; $showcount=0;
+                            if ( ($this->debug) && ($showmax>0) ) echo "      Darstellung der Daten für die Anzeige von $module:\n";
+                            foreach ($result as $entry)
                                 {
-                                $result=$resultAll["Values"];
-                                $letzte=array_key_last($result);
-                                $scale=100/$result[$letzte]["Value"];
+                                //if ($scale==0) $scale=100/$entry["Value"];
+                                if ( ($this->debug) && ($showcount < $showmax) ) echo "      ".date("d.m. H:i:s",$entry["TimeStamp"])."  ".($entry["Value"]*$scale)."\n";
+                                $showcount++;
+                                if (isset($entry["Value"])) $serie['data'][] = ["TimeStamp" =>  $entry["TimeStamp"],"y" => ($entry["Value"]*$scale)];
+                                if (isset($entry["Avg"])) $serie['data'][] = ["TimeStamp" =>  $entry["TimeStamp"],"y" => ($entry["Avg"]*$scale)];               // auch für aggregated Werte
                                 }
-                            else $result=array();
-                            }                            
-                        if ($this->debug) echo "      Darstellung der Daten für die Anzeige von $module:\n";
 
-                        foreach ($result as $entry)
+                            break;
+                        case "EASYTREND":
+                        case "EASY":
+                            $oid=$defserie['Id'];
+                            IPSUtils_Include ("Guthabensteuerung_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");                
+                            IPSUtils_Include ("Selenium_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");                
+                            $seleniumEasycharts = new SeleniumEasycharts();  
+                            $split=$seleniumEasycharts->getSplitfromOid($oid);
+                            $analyseConfig1=$analyseConfig;
+                            if ($split) $analyseConfig1["Split"]=$split;
+                            if ($this->debug) echo "-------------\nReport calls analyseValues($oid,...)\n"; 
+                            $resultAll = $archiveOps->analyseValues($oid,$analyseConfig1,$this->debug);          // oid wurde
+                            if ($module=="EASYTREND") 
+                                {
+                                //if ($this->debug) print_r($resultAll);
+
+                                if (strtoupper($defserie["display"])=="MEANSROLL") 
+                                    {
+                                    if ($this->debug) echo "Modul Easytrend ".count($result)." Werte aus dem laufenden Mittelwert für Wochen verarbeiten.\n";
+                                    $result=$resultAll["MeansRoll"]["Var"];
+                                    }
+                                elseif (strtoupper($defserie["display"])=="MEANSROLLMONTH") 
+                                    {
+                                    if ($this->debug) echo "Modul Easytrend ".count($result)." Werte aus dem laufenden Mittelwert für Monateverarbeiten.\n";
+                                    $result=$resultAll["MeansRoll"]["Month"];
+                                    }
+                                elseif (strtoupper($defserie["display"])=="TRENDMONTH") 
+                                    {
+                                    if ($this->debug) echo "Modul Easytrend ".count($result)." Werte aus dem laufenden Mittelwert für Monateverarbeiten.\n";
+                                    $result=$resultAll["Description"]["Interval"]["Month"]["MeansVar"];
+                                    //print_r($result);
+                                    }
+                                else 
+                                    {
+                                    $result=$resultAll["Values"];                 // true mit Debug, aus dem Archiv geladene Datenserie nicht einschränken
+                                    if ($this->debug) echo "Modul Easytrend ".count($result)." Werte verarbeiten.\n";
+                                    }
+                                $scale=1;
+                                }
+                            else 
+                                {
+                                if (is_array($resultAll))
+                                    {
+                                    $result=$resultAll["Values"];
+                                    $letzte=array_key_last($result);
+                                    $scale=100/$result[$letzte]["Value"];
+                                    }
+                                else $result=array();
+                                }                            
+                            if ($this->debug) echo "      Darstellung der Daten für die Anzeige von $module:\n";
+
+                            foreach ($result as $entry)
+                                {
+                                //if ($scale==0) $scale=100/$entry["Value"];
+                                if ($this->debug) echo "      ".date("d.m. H:i:s",$entry["TimeStamp"])."  ".($entry["Value"]*$scale)."\n";
+                                $serie['data'][] = ["TimeStamp" =>  $entry["TimeStamp"],"y" => ($entry["Value"]*$scale)];
+                                }
+                            //print_R($result);
+                            //$serie['Id']   = $defserie['Id'];
+                            break;
+                        default:
+                            if (IPS_ObjectExists($defserie['Id']))
+                                {
+                                $serie['Id']   = $defserie['Id'];
+                                }
+                            else echo "Fehler, ".$defserie['Id']." nicht vorhanden.\n";
+                            break;
+                        }
+                    //if ($defserie['Unit']=='$')            /* Statuswerte */
+                    if ($defserie[IPSRP_PROPERTY_VALUETYPE]==IPSRP_VALUETYPE_STATE)
+                        {
+                        if ($this->debug) echo "Statuswerte von ".$serie['Id']." Werte werden automatisch ergänzt.\n";
+                        $serie['Unit']='$';
+                        $serie['step'] = 'right';
+                        $serie['ReplaceValues'] = array(0=>$j,1=>$j+1);
+                        $j+=2;
+                        if (isset($yaxis[$serie['Unit']]))
                             {
-                            //if ($scale==0) $scale=100/$entry["Value"];
-                            if ($this->debug) echo "      ".date("d.m. H:i:s",$entry["TimeStamp"])."  ".($entry["Value"]*$scale)."\n";
-                            $serie['data'][] = ["TimeStamp" =>  $entry["TimeStamp"],"y" => ($entry["Value"]*$scale)];
+
                             }
-                        //print_R($result);
-                        //$serie['Id']   = $defserie['Id'];
+                        else
+                            {
+                            $serie['yAxis'] = $i;
+                            $yaxis[$serie['Unit']]= $i;
+                            $i++;
+                            }
+                        }
+                    else
+                        {
+                        if ($this->debug) echo "Serie Type ".$defserie[IPSRP_PROPERTY_VALUETYPE]."\n";
+                        /* wenn nicht Status alle Einheiten im array yaxis sammeln */
+                        if (isset($yaxis[$defserie[IPSRP_PROPERTY_VALUETYPE]])) {}
+                        else
+                            {
+                            $serie['yAxis'] = $i;
+                            $yaxis[$defserie[IPSRP_PROPERTY_VALUETYPE]]= $i;
+                            $i++;
+                            }
+                        }
+                    $serie['marker']['enabled'] = false;
+                    if ($this->debug) echo "RebuildGraph: Serie $index wurde ermittelt, wird jetzt als Index $index abgespeichert.\n";
+                    $CfgDaten['series'][$index++] = $serie;
+                    }   /* ende foreach */
+
+                if ($this->debug) echo "RebuildGraph: Kurven ermitteln abgeschlossen.\n";
+                /* Plot Bands für bessere Lesbarkeit  ["StartTime"=>$CfgDaten["StartTime"],"EndTime"=>$CfgDaten["EndTime"]] 
+                    * Starttime, Endtime, periode
+                    * minimum Display resolution is day, if periode is week, start end of week is necessary
+                    * Weekday when week starts
+                    */
+                $time=$CfgDaten["StartTime"]; $endTime = $CfgDaten["EndTime"]; 
+                $daysToDisplay=round(($endTime-$time)/60/60/24,0);
+                //echo $daysToDisplay;
+                if ($daysToDisplay>20) $periode="Week";              // is Day/Week/Month  , abhängig von der Auswahl der Periode, oder Abstand Starttime-Endtime in Tagen: zB 20
+                else $periode="Day"; 
+                $index=0; $color=['#dFdFdF','#eFeFeF'];
+                $startOfThisDay = $time; 
+                $CfgDaten['xAxis']['type'] = "datetime";
+                do                                                  // plot bands for days or weeks (weeks have less intervals) time has to be increased accordingly
+                    {
+                    $nextday=$time+60*60*24;
+                    $startOfNextDay=mktime(0,0,0,date("m",$nextday), date("d",$nextday), date("Y",$nextday)); 
+                    $startOfNextWeek=$startOfNextDay; $nextweek=$nextday;
+                    $weekDay = date("D",$startOfNextDay);           // get week day of next day                       
+                    while (date("D",$startOfNextWeek)!= "Sun")
+                        {
+                        $startOfNextWeek = $startOfNextWeek + 60*60*24;  
+                        $nextweek = $nextweek +60*60*24;
+                        }
+                    if ($periode != "Day") 
+                        {
+                        $startOfNextDay = $startOfNextWeek;
+                        $nextday   = $nextweek;
+                        }                        
+                    if ($startOfNextDay>$endTime) $startOfNextDay=$endTime;
+
+                    $CfgDaten['xAxis']['plotBands'][$index]['from'] = "@" . $this->CreateDateUTC($startOfThisDay) ."@";
+                    $CfgDaten['xAxis']['plotBands'][$index]['to'] = "@" . $this->CreateDateUTC($startOfNextDay) ."@";
+                    $CfgDaten['xAxis']['plotBands'][$index]['color'] = $color[($index % 2)];
+                    if ($periode == "Day") $CfgDaten['xAxis']['plotBands'][$index]['label']['text'] = date("D",$time);
+                    else $CfgDaten['xAxis']['plotBands'][$index]['label']['text'] = date("W",$time);
+                    $CfgDaten['xAxis']['plotBands'][$index]['zIndex'] = 3;                                                          // how far in the foreground is shall be plotted
+
+                    $time=$nextday; $index++;
+                    $startOfThisDay = $startOfNextDay;
+                    } while ($time < ($endTime));
+                    //} while ($time < ($endTime+60*60*2));
+                //echo "Index $index";                                                // is this what you see, ende plot bands
+
+                /* für EASY eine zusätzliche Tabelle schreiben, bei EASYTREND bleibt die letzte Tabelle stehen, reine Selenium Easycharts Funktion 
+                * der Zeitraum für die Analyse wird duch den Zeitraum der Spanne für die Darstellung gewählt 
+                *      $configArray            Auswahl des Musterdepots für die Darstellung in der Tabelle
+                *
+                *
+                */
+                switch ($module)                    
+                    {
+                    case "EASY": 
+
+                        IPSUtils_Include ("Guthabensteuerung_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");                
+                        IPSUtils_Include ("Selenium_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");  
+                        $yahoofin = new SeleniumYahooFin();
+                        $guthabenHandler = new GuthabenHandler(true,true,false); 
+                        $configs = $guthabenHandler->getSeleniumTabsConfig("YAHOOFIN",false);            // true for Debug
+                        $yahoofin->setConfiguration($configs);
+                        $targets = $yahoofin->getResult("TargetValue", false);                //true für Debug
+                        if ($this->debug) echo "  targets from YahooFin found.\n";
+                        $seleniumEasycharts = new SeleniumEasycharts();                         
+                        $orderbook = $seleniumEasycharts->getEasychartOrderConfiguration();
+                        $shares    = $seleniumEasycharts->getResultConfiguration($report_config["configuration"][$selectAssociation[$select]]);
+                        /*$shares=array();
+                        foreach ($configArray as $index => $share)
+                            {
+                            $shares[$index]=$share;
+                            $shares[$index]["ID"]=$index;
+                            }*/
+                        $resultShares=array();
+                        foreach($shares as $index => $share)                    //haben immer noch eine gute Reihenfolge, wird auch in resultShares übernommen
+                            {
+                            //print_R($share);
+                            $analyseConfig1=$analyseConfig;         //Backup Config
+                            $oid = $share["OID"];
+                            if (isset($share["Split"])) $analyseConfig1["Split"]=$share["Split"];                   // add split to this config
+                            if ($this->debug) echo "==================\nReport calls analyseValues($oid,...)\n"; 
+                            $result = $archiveOps->analyseValues($oid,$analyseConfig1,$this->debug);                 // true mit Debug
+                            if ($this->debug) 
+                                {
+                                if ( (isset($share["Name"])) && ($share["Name"] != "") ) echo "Bearbeite Share \"".$share["Name"]."\" :\n";
+                                else echo "Bearbeite Share \"".$share["ID"]."\" :\n";
+                                print_R($result["Description"]["Interval"]);
+                                }
+                            $resultShares[$share["ID"]]=$result;
+                            $resultShares[$share["ID"]]["Info"]=$share;
+                            if (isset($orderbook[$share["ID"]])) $resultShares[$share["ID"]]["Order"]=$orderbook[$share["ID"]];
+                            $archiveOps->addInfoValues($oid,$share);
+                            if (isset($targets[$index])) 
+                                {
+                                if (isset($targets[$index]["Target"]))
+                                    {
+                                    $resultShares[$index]["Description"]["Target"]=$targets[$index]["Target"];
+                                    //echo "Target $index ";
+                                    }
+                                }
+                            if (isset($share["Split"])) $resultShares[$share["ID"]]["Split"]=$share["Split"];         // aus der Depotkonfig nehmen, alternativ auch aus dem Array
+                            } 
+                        //print_r($resultShares);
+                        $wert = $seleniumEasycharts->writeResultAnalysed($resultShares,true,3);                       // true for html, 1 as size
+                        $DataTableID   = IPS_GetObjectIdByName("ReportDataTable",   $this->categoryIdData);  
+                        //echo "write html Table ($DataTableID) based on resultshares (".json_encode($analyseConfig)."):";
+                        //print_r($analyseConfig);
+                        SetValue($DataTableID,$wert);                                                                           // eine schöne Tablee schreiben
                         break;
                     default:
-                        if (IPS_ObjectExists($defserie['Id']))
-                            {
-                            $serie['Id']   = $defserie['Id'];
-                            }
-                        else echo "Fehler, ".$defserie['Id']." nicht vorhanden.\n";
                         break;
                     }
-                //if ($defserie['Unit']=='$')            /* Statuswerte */
-                if ($defserie[IPSRP_PROPERTY_VALUETYPE]==IPSRP_VALUETYPE_STATE)
-                    {
-                    if ($this->debug) echo "Statuswerte von ".$serie['Id']." Werte werden automatisch ergänzt.\n";
-                    $serie['Unit']='$';
-                    $serie['step'] = 'right';
-                    $serie['ReplaceValues'] = array(0=>$j,1=>$j+1);
-                    $j+=2;
-                    if (isset($yaxis[$serie['Unit']]))
-                        {
+                
+                
+                
+                
+                
+                $i=0;
+                $CfgDaten['yAxis'][$i]['opposite'] = false;
+                $CfgDaten['yAxis'][$i]['gridLineWidth'] = 0;
 
+                /* dann yaxis auswerten, und eventuell zwei Achsen links und rechts aufbauen
+                    * die erste Achse kommt links, alle weiteren rechts , bei Status immer alle links
+                    */
+                $opposite=false;
+                foreach ($yaxis as $unit=>$index)
+                    {
+                    //echo "**Bearbeitung von ".$unit." und ".$index." \n";
+                    if ($unit==IPSRP_VALUETYPE_TEMPERATURE)
+                        {
+                        $CfgDaten['yAxis'][$index]['title']['text'] = "Temperaturen";
+                        $CfgDaten['yAxis'][$index]['Unit'] = '°C';
+                        $CfgDaten['yAxis'][$index]['opposite'] = $opposite;
+                        if ($opposite==false) { $opposite_=true; }
+                        //$CfgDaten['yAxis'][$i]['tickInterval'] = 5;
+                        //$CfgDaten['yAxis'][$i]['min'] = -20;
+                        //$CfgDaten['yAxis'][$i]['max'] = 50;
+                        //$CfgDaten['yAxis'][$i]['ceiling'] = 50;
                         }
-                    else
+                    if ($unit==IPSRP_VALUETYPE_STATE)         /* Statuswerte */
                         {
-                        $serie['yAxis'] = $i;
-                        $yaxis[$serie['Unit']]= $i;
-                        $i++;
+                        $CfgDaten['yAxis'][$index]['title']['text'] = "Status";
+                        $CfgDaten['yAxis'][$index]['Unit'] = '$';
+                        //$CfgDaten['yAxis'][$i]['tickInterval'] = 5;
+                        $CfgDaten['yAxis'][$index]['min'] = 0;
+                        //$CfgDaten['yAxis'][$i]['offset'] = 100;
+                        //$CfgDaten['yAxis'][$i]['max'] = 100;
                         }
-                    }
-                else
-                    {
-                    if ($this->debug) echo "Serie Type ".$defserie[IPSRP_PROPERTY_VALUETYPE]."\n";
-                    /* wenn nicht Status alle Einheiten im array yaxis sammeln */
-                    if (isset($yaxis[$defserie[IPSRP_PROPERTY_VALUETYPE]])) {}
-                    else
+                    if ($unit==IPSRP_VALUETYPE_HUMIDITY)
                         {
-                        $serie['yAxis'] = $i;
-                        $yaxis[$defserie[IPSRP_PROPERTY_VALUETYPE]]= $i;
-                        $i++;
+                        $CfgDaten['yAxis'][$index]['title']['text'] = "Feuchtigkeit";
+                        $CfgDaten['yAxis'][$index]['Unit'] = '%';
+                        $CfgDaten['yAxis'][$index]['opposite'] = $opposite;
+                        if ($opposite==false) { $opposite_=true; }
+                        //$CfgDaten['yAxis'][$i]['tickInterval'] = 5;
+                        //$CfgDaten['yAxis'][$index]['min'] = 0;
+                        //$CfgDaten['yAxis'][$i]['offset'] = 100;
+                        //$CfgDaten['yAxis'][$i]['max'] = 100;
                         }
-                    }
-                $serie['marker']['enabled'] = false;
-                if ($this->debug) echo "RebuildGraph: Serie $index wurde ermittelt, wird jetzt als Index $index abgespeichert.\n";
-                $CfgDaten['series'][$index++] = $serie;
-                }   /* ende foreach */
-
-            if ($this->debug) echo "RebuildGraph: Kurven ermitteln abgeschlossen.\n";
-            /* Plot Bands für bessere Lesbarkeit  ["StartTime"=>$CfgDaten["StartTime"],"EndTime"=>$CfgDaten["EndTime"]] 
-                * Starttime, Endtime, periode
-                * minimum Display resolution is day, if periode is week, start end of week is necessary
-                * Weekday when week starts
-                */
-            $time=$CfgDaten["StartTime"]; $endTime = $CfgDaten["EndTime"]; 
-            $daysToDisplay=round(($endTime-$time)/60/60/24,0);
-            //echo $daysToDisplay;
-            if ($daysToDisplay>20) $periode="Week";              // is Day/Week/Month  , abhängig von der Auswahl der Periode, oder Abstand Starttime-Endtime in Tagen: zB 20
-            else $periode="Day"; 
-            $index=0; $color=['#dFdFdF','#eFeFeF'];
-            $startOfThisDay = $time; 
-            $CfgDaten['xAxis']['type'] = "datetime";
-            do                                                  // plot bands for days or weeks (weeks have less intervals) time has to be increased accordingly
-                {
-                $nextday=$time+60*60*24;
-                $startOfNextDay=mktime(0,0,0,date("m",$nextday), date("d",$nextday), date("Y",$nextday)); 
-                $startOfNextWeek=$startOfNextDay; $nextweek=$nextday;
-                $weekDay = date("D",$startOfNextDay);           // get week day of next day                       
-                while (date("D",$startOfNextWeek)!= "Sun")
-                    {
-                    $startOfNextWeek = $startOfNextWeek + 60*60*24;  
-                    $nextweek = $nextweek +60*60*24;
-                    }
-                if ($periode != "Day") 
-                    {
-                    $startOfNextDay = $startOfNextWeek;
-                    $nextday   = $nextweek;
-                    }                        
-                if ($startOfNextDay>$endTime) $startOfNextDay=$endTime;
-
-                $CfgDaten['xAxis']['plotBands'][$index]['from'] = "@" . $this->CreateDateUTC($startOfThisDay) ."@";
-                $CfgDaten['xAxis']['plotBands'][$index]['to'] = "@" . $this->CreateDateUTC($startOfNextDay) ."@";
-                $CfgDaten['xAxis']['plotBands'][$index]['color'] = $color[($index % 2)];
-                if ($periode == "Day") $CfgDaten['xAxis']['plotBands'][$index]['label']['text'] = date("D",$time);
-                else $CfgDaten['xAxis']['plotBands'][$index]['label']['text'] = date("W",$time);
-                $CfgDaten['xAxis']['plotBands'][$index]['zIndex'] = 3;                                                          // how far in the foreground is shall be plotted
-
-                $time=$nextday; $index++;
-                $startOfThisDay = $startOfNextDay;
-                } while ($time < ($endTime));
-                //} while ($time < ($endTime+60*60*2));
-            //echo "Index $index";                                                // is this what you see, ende plot bands
-
-            /* für EASY eine zusätzliche Tabelle schreiben, bei EASYTREND bleibt die letzte Tabelle stehen, reine Selenium Easycharts Funktion 
-             * der Zeitraum für die Analyse wird duch den Zeitraum der Spanne für die Darstellung gewählt 
-             *      $configArray            Auswahl des Musterdepots für die Darstellung in der Tabelle
-             *
-             *
-             */
-            switch ($module)                    
-                {
-                case "EASY": 
-
-                    IPSUtils_Include ("Guthabensteuerung_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");                
-                    IPSUtils_Include ("Selenium_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");  
-                    $yahoofin = new SeleniumYahooFin();
-                    $guthabenHandler = new GuthabenHandler(true,true,false); 
-                    $configs = $guthabenHandler->getSeleniumTabsConfig("YAHOOFIN",false);            // true for Debug
-                    $yahoofin->setConfiguration($configs);
-                    $targets = $yahoofin->getResult("TargetValue", false);                //true für Debug
-                    if ($this->debug) echo "  targets from YahooFin found.\n";
-                    $seleniumEasycharts = new SeleniumEasycharts();                         
-                    $orderbook = $seleniumEasycharts->getEasychartOrderConfiguration();
-                    $shares    = $seleniumEasycharts->getResultConfiguration($report_config["configuration"][$selectAssociation[$select]]);
-                    /*$shares=array();
-                    foreach ($configArray as $index => $share)
+                    if ($unit==IPSRP_VALUETYPE_CONTROL)
                         {
-                        $shares[$index]=$share;
-                        $shares[$index]["ID"]=$index;
-                        }*/
-                    $resultShares=array();
-                    foreach($shares as $index => $share)                    //haben immer noch eine gute Reihenfolge, wird auch in resultShares übernommen
+                        $CfgDaten['yAxis'][$index]['title']['text'] = "Stellwert";
+                        $CfgDaten['yAxis'][$index]['Unit'] = '%';
+                        $CfgDaten['yAxis'][$index]['opposite'] = $opposite;
+                        if ($opposite==false) { $opposite_=true; }
+                        //$CfgDaten['yAxis'][$i]['tickInterval'] = 5;
+                        //$CfgDaten['yAxis'][$index]['min'] = 0;
+                        //$CfgDaten['yAxis'][$i]['offset'] = 100;
+                        //$CfgDaten['yAxis'][$i]['max'] = 100;
+                        }                                           
+                    if ($unit==IPSRP_VALUETYPE_LENGTH)
                         {
-                        //print_R($share);
-                        $analyseConfig1=$analyseConfig;         //Backup Config
-                        $oid = $share["OID"];
-                        if (isset($share["Split"])) $analyseConfig1["Split"]=$share["Split"];                   // add split to this config
-                        if ($this->debug) echo "==================\nReport calls analyseValues($oid,...)\n"; 
-                        $result = $archiveOps->analyseValues($oid,$analyseConfig1,$this->debug);                 // true mit Debug
-                        if ($this->debug) 
-                            {
-                            if ( (isset($share["Name"])) && ($share["Name"] != "") ) echo "Bearbeite Share \"".$share["Name"]."\" :\n";
-                            else echo "Bearbeite Share \"".$share["ID"]."\" :\n";
-                            print_R($result["Description"]["Interval"]);
-                            }
-                        $resultShares[$share["ID"]]=$result;
-                        $resultShares[$share["ID"]]["Info"]=$share;
-                        if (isset($orderbook[$share["ID"]])) $resultShares[$share["ID"]]["Order"]=$orderbook[$share["ID"]];
-                        $archiveOps->addInfoValues($oid,$share);
-                        if (isset($targets[$index])) 
-                            {
-                            if (isset($targets[$index]["Target"]))
-                                {
-                                $resultShares[$index]["Description"]["Target"]=$targets[$index]["Target"];
-                                //echo "Target $index ";
-                                }
-                            }
-                        if (isset($share["Split"])) $resultShares[$share["ID"]]["Split"]=$share["Split"];         // aus der Depotkonfig nehmen, alternativ auch aus dem Array
-                        } 
-                    //print_r($resultShares);
-                    $wert = $seleniumEasycharts->writeResultAnalysed($resultShares,true,3);                       // true for html, 1 as size
-                    $DataTableID   = IPS_GetObjectIdByName("ReportDataTable",   $this->categoryIdData);  
-                    //echo "write html Table ($DataTableID) based on resultshares (".json_encode($analyseConfig)."):";
-                    //print_r($analyseConfig);
-                    SetValue($DataTableID,$wert);                                                                           // eine schöne Tablee schreiben
-                    break;
-                default:
-                    break;
+                        $CfgDaten['yAxis'][$index]['title']['text'] = "Regenmenge";
+                        $CfgDaten['yAxis'][$index]['Unit'] = 'mm';
+                        $CfgDaten['yAxis'][$index]['opposite'] = $opposite;
+                        if ($opposite==false) { $opposite_=true; }
+                        }
+                    if ($unit==IPSRP_VALUETYPE_CURRENT)
+                        {
+                        $CfgDaten['yAxis'][$index]['title']['text'] = "Strom";
+                        $CfgDaten['yAxis'][$index]['Unit'] = 'A';
+                        $CfgDaten['yAxis'][$index]['opposite'] = $opposite;
+                        if ($opposite==false) { $opposite_=true; }
+                        }
+                    if ($unit==IPSRP_VALUETYPE_POWER)
+                        {
+                        $CfgDaten['yAxis'][$index]['title']['text'] = "Leistung";
+                        /* in der Report_getconfiguration können unterschiedliche Werte stehen, zB W und kW, hier vereinheitlichen */
+                        $CfgDaten['yAxis'][$index]['Unit'] = 'kW';
+                        $CfgDaten['yAxis'][$index]['opposite'] = $opposite;
+                        if ($opposite==false) { $opposite_=true; }
+                        }
+                    if ($unit==IPSRP_VALUETYPE_ENERGY)
+                        {
+                        $CfgDaten['yAxis'][$index]['title']['text'] = "Energie";
+                        $CfgDaten['yAxis'][$index]['Unit'] = 'kWh';
+                        $CfgDaten['yAxis'][$index]['opposite'] = $opposite;
+                        if ($opposite==false) { $opposite_=true; }
+                        }
+                    } /* ende foreach */
                 }
-            
-            
-            
-            
-            
-            $i=0;
-            $CfgDaten['yAxis'][$i]['opposite'] = false;
-            $CfgDaten['yAxis'][$i]['gridLineWidth'] = 0;
-
-            /* dann yaxis auswerten, und eventuell zwei Achsen links und rechts aufbauen
-                * die erste Achse kommt links, alle weiteren rechts , bei Status immer alle links
-                */
-            $opposite=false;
-            foreach ($yaxis as $unit=>$index)
-                {
-                //echo "**Bearbeitung von ".$unit." und ".$index." \n";
-                if ($unit==IPSRP_VALUETYPE_TEMPERATURE)
-                    {
-                    $CfgDaten['yAxis'][$index]['title']['text'] = "Temperaturen";
-                    $CfgDaten['yAxis'][$index]['Unit'] = '°C';
-                    $CfgDaten['yAxis'][$index]['opposite'] = $opposite;
-                    if ($opposite==false) { $opposite_=true; }
-                    //$CfgDaten['yAxis'][$i]['tickInterval'] = 5;
-                    //$CfgDaten['yAxis'][$i]['min'] = -20;
-                    //$CfgDaten['yAxis'][$i]['max'] = 50;
-                    //$CfgDaten['yAxis'][$i]['ceiling'] = 50;
-                    }
-                if ($unit==IPSRP_VALUETYPE_STATE)         /* Statuswerte */
-                    {
-                    $CfgDaten['yAxis'][$index]['title']['text'] = "Status";
-                    $CfgDaten['yAxis'][$index]['Unit'] = '$';
-                    //$CfgDaten['yAxis'][$i]['tickInterval'] = 5;
-                    $CfgDaten['yAxis'][$index]['min'] = 0;
-                    //$CfgDaten['yAxis'][$i]['offset'] = 100;
-                    //$CfgDaten['yAxis'][$i]['max'] = 100;
-                    }
-                if ($unit==IPSRP_VALUETYPE_HUMIDITY)
-                    {
-                    $CfgDaten['yAxis'][$index]['title']['text'] = "Feuchtigkeit";
-                    $CfgDaten['yAxis'][$index]['Unit'] = '%';
-                    $CfgDaten['yAxis'][$index]['opposite'] = $opposite;
-                    if ($opposite==false) { $opposite_=true; }
-                    //$CfgDaten['yAxis'][$i]['tickInterval'] = 5;
-                    //$CfgDaten['yAxis'][$index]['min'] = 0;
-                    //$CfgDaten['yAxis'][$i]['offset'] = 100;
-                    //$CfgDaten['yAxis'][$i]['max'] = 100;
-                    }
-                if ($unit==IPSRP_VALUETYPE_CONTROL)
-                    {
-                    $CfgDaten['yAxis'][$index]['title']['text'] = "Stellwert";
-                    $CfgDaten['yAxis'][$index]['Unit'] = '%';
-                    $CfgDaten['yAxis'][$index]['opposite'] = $opposite;
-                    if ($opposite==false) { $opposite_=true; }
-                    //$CfgDaten['yAxis'][$i]['tickInterval'] = 5;
-                    //$CfgDaten['yAxis'][$index]['min'] = 0;
-                    //$CfgDaten['yAxis'][$i]['offset'] = 100;
-                    //$CfgDaten['yAxis'][$i]['max'] = 100;
-                    }                                           
-                if ($unit==IPSRP_VALUETYPE_LENGTH)
-                    {
-                    $CfgDaten['yAxis'][$index]['title']['text'] = "Regenmenge";
-                    $CfgDaten['yAxis'][$index]['Unit'] = 'mm';
-                    $CfgDaten['yAxis'][$index]['opposite'] = $opposite;
-                    if ($opposite==false) { $opposite_=true; }
-                    }
-                if ($unit==IPSRP_VALUETYPE_CURRENT)
-                    {
-                    $CfgDaten['yAxis'][$index]['title']['text'] = "Strom";
-                    $CfgDaten['yAxis'][$index]['Unit'] = 'A';
-                    $CfgDaten['yAxis'][$index]['opposite'] = $opposite;
-                    if ($opposite==false) { $opposite_=true; }
-                    }
-                if ($unit==IPSRP_VALUETYPE_POWER)
-                    {
-                    $CfgDaten['yAxis'][$index]['title']['text'] = "Leistung";
-                    /* in der Report_getconfiguration können unterschiedliche Werte stehen, zB W und kW, hier vereinheitlichen */
-                    $CfgDaten['yAxis'][$index]['Unit'] = 'kW';
-                    $CfgDaten['yAxis'][$index]['opposite'] = $opposite;
-                    if ($opposite==false) { $opposite_=true; }
-                    }
-                if ($unit==IPSRP_VALUETYPE_ENERGY)
-                    {
-                    $CfgDaten['yAxis'][$index]['title']['text'] = "Energie";
-                    $CfgDaten['yAxis'][$index]['Unit'] = 'kWh';
-                    $CfgDaten['yAxis'][$index]['opposite'] = $opposite;
-                    if ($opposite==false) { $opposite_=true; }
-                    }
-                } /* ende foreach */
-
-
+            // return is $CfgDaten adapted to the new information    
             }
 
+
+        /* 
+         * do not forget to set 
+            $serie=array();
+            $serie['name'] = "HeatingTemp";
+            $serie['type'] = "line";
+         * data is simple indexed and has TimeStamp/Value entries, works also with Avg
+         * mit Debug kann man Teile des Arrays anzeigen lassen
+         */
+        public function copyserie(&$serie,$data,$startTime=false)
+            {
+            $scale=1;
+            $showmax=0; $showcount=0;
+            foreach ($data as $entry)
+                {
+                $actTime=$entry["TimeStamp"];
+                //if ($scale==0) $scale=100/$entry["Value"];
+                if ( ($this->debug) && ($showcount < $showmax) ) echo "      ".date("d.m. H:i:s",$entry["TimeStamp"])."  ".($entry["Value"]*$scale)."\n";
+                $showcount++;
+                if ( ($startTime===false) || ($actTime>$startTime) )
+                    {
+                    if (isset($entry["Value"])) $serie['data'][] = ["TimeStamp" =>  $entry["TimeStamp"],"y" => ($entry["Value"]*$scale)];
+                    if (isset($entry["Avg"])) $serie['data'][] = ["TimeStamp" =>  $entry["TimeStamp"],"y" => ($entry["Avg"]*$scale)];               // auch für aggregated Werte
+                    }
+                } 
+            return($serie);
+            }
+            
 		// ------------------------------------------------------------------------
 		// CreateDateUTC, hier in der Klasse noch einmal definiert, gibt es in IPSHighcharts.inc
 		//    Erzeugen des DateTime Strings für Highchart-Config

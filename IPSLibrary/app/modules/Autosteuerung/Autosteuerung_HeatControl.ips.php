@@ -4,8 +4,10 @@
 *
 * Autosteuerung, Spezialroutinen für Stromheizung/Heatcontrol
 * immer um 00:00:10 aufgerufen
-*
-*
+* und alle 14400 Sekunden
+* aufgerufen wenn Timer, Execute oder Webfront
+* übernimmt das Setzen von Variablen
+*  verschiebt einmal am Tag den Wochenplan für den Einsatz der Heizung
 *
 *******************************************************************************************/
 

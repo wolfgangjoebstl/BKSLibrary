@@ -7,13 +7,10 @@
  *
  */ 
 
-//Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 
 IPSUtils_Include ("Autosteuerung_Configuration.inc.php","IPSLibrary::config::modules::Autosteuerung");
-//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Class.inc.php");
-//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_AlexaClass.inc.php");
 
 IPSUtils_Include ("Autosteuerung_Class.inc.php","IPSLibrary::app::modules::Autosteuerung");
 IPSUtils_Include ("Autosteuerung_AlexaClass.inc.php","IPSLibrary::app::modules::Autosteuerung");
@@ -25,6 +22,7 @@ IPSUtils_Include ('DeviceManagement_Library.class.php', 'IPSLibrary::app::module
     $moduleManager = new IPSModuleManager('Autosteuerung',$repository);
     $installedModules 	= $moduleManager->GetInstalledModules();
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+    $categoryIdAS_Autosteuerung = IPS_GetCategoryIDByName("Ansteuerung", $CategoryIdData);
 
     if ($_IPS['SENDER']=="Execute") $debug=true;
     else $debug=false; 
@@ -73,8 +71,12 @@ IPSUtils_Include ('DeviceManagement_Library.class.php', 'IPSLibrary::app::module
         $CategoryIdDataOC   = $moduleManagerOC->GetModuleCategoryID('data');
         }
 
-    $powerLock_ID="unknown";
-    $SchalterSortAlexa_ID="unknown";
+    $SchalterHeatingPowerID   = "unknown";
+    $SchalterHeatingTimerID   = "unknown";
+    $SchalterTimerPulsMinusID = "unknown";    
+
+    $powerLock_ID           = "unknown";
+    $SchalterSortAlexa_ID   = "unknown";
     $AutoSetSwitches = $auto->get_Autosteuerung_SetSwitches();              // allgemein für alle Module verwendet
     foreach ($AutoSetSwitches as $nameAuto => $AutoSetSwitch)
         {
@@ -118,7 +120,11 @@ IPSUtils_Include ('DeviceManagement_Library.class.php', 'IPSLibrary::app::module
                     {
                     // Aktuator
                     $componentHandling = new ComponentHandling();
-                    if ($debug) echo "Geräte mit getComponent suchen, geht jetzt mit HardwareList und DeviceList.\n";
+                    if ($debug) 
+                        {
+                        echo "ALARMANLAGE:\n";
+                        echo "Geräte mit getComponent suchen, geht jetzt mit HardwareList und DeviceList.\n";
+                        }
                     IPSUtils_Include ("EvaluateHardware_Devicelist.inc.php","IPSLibrary::config::modules::EvaluateHardware");
                     $deviceList = deviceList();            // Configuratoren sind als Function deklariert, ist in EvaluateHardware_Devicelist.inc.php                    
                     $resultKey=$componentHandling->getComponent($deviceList,["TYPECHAN" => "TYPE_POWERLOCK","REGISTER" => "KEYSTATE"],"Install",$debug);                        // true für Debug, bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben   
@@ -145,6 +151,14 @@ IPSUtils_Include ('DeviceManagement_Library.class.php', 'IPSLibrary::app::module
                         }
                     }
                 break;
+            case "MEASUREMENT":
+                $ar = new AutosteuerungRegler();            // Heizungssteuerung, immer in der Loop
+                $ar->DoHeating($categoryIdAS_Autosteuerung);  
+                $SchalterHeatingPowerID     = $ar->powerOnFunctionID;               // Function Switch On/off/Auto, On/Off with Delay
+                $SchalterHeatingTimerID     = $ar->powerOnTimerID;                  // das Delay festlegen
+                $SchalterTimerPulsMinusID   = $ar->powerOnTimerPlusMinusID;         // das Delay groesser oder kleiner machen
+                $TimerValueID               = $ar->stateTimerValueID;               // der aktuelle Wert des Delays, im doStatus zu erkennen 
+                break;                
             }
         }
 
@@ -323,6 +337,26 @@ if ($_IPS['SENDER']=="WebFront")
 				}
 
             break;
+        case $SchalterHeatingPowerID:
+            $function   = GetValueIfFormatted($SchalterHeatingPowerID);
+            $timer=GetValue($ar->stateTimerValueID); 
+            $log->LogMessage("Heating Message \"".$function."\" \"".$timer."\" aufgerufen");
+            $log->LogNachrichten("Heating Note \"".$function."\" \"".$timer."\" aufgerufen");        // wird im Webfront Tab Autosteuerung angezeigt
+
+            $ar->getSwitchPressed($function,$timer);            // calls entry points to state engine
+            $html=$ar->doStatus();
+            SetValue($ar->heatingStatus,$html);
+            break;
+        case $SchalterTimerPulsMinusID:
+            $ar->getTimerSetPressed(GetValueIfFormatted($SchalterTimerPulsMinusID));
+            $html=$ar->doStatus();
+            SetValue($ar->heatingStatus,$html);
+            break;        
+        case $SchalterHeatingTimerID:
+            $ar->getTimerSetPressed(GetValueIfFormatted($SchalterHeatingTimerID));
+            $html=$ar->doStatus();
+            SetValue($ar->heatingStatus,$html);
+            break;        
         case $SchalterSortDevMan_ID:
 		case $SchalterSortDM_ID:
 		default:
@@ -341,6 +375,8 @@ if ($_IPS['SENDER']=="WebFront")
 	
 if ($_IPS['SENDER']=="Execute")
 	{
+    echo "\n";
+    echo "========================================\n";        
 	echo "Testweise Execute des Scripts aufgerufen.\n";
 	echo "  Schalter für Sortierung der Autosteuerungs Events : $SchalterSortAS_ID.\n";
 	echo "  Schalter für Sortierung der Alexa Befehle         : $SchalterSortAlexa_ID.\n";
@@ -348,8 +384,8 @@ if ($_IPS['SENDER']=="Execute")
 	$debug=true;
 	echo "========================================Monitor\n";
     $ergebnis=$operate->MonitorStatus($debug);
-
-
+	echo "========================================Measure\n";
+    echo "Schalter ID für Power ON OFF IN4Hours etc : $SchalterHeatingPowerID \n";
 	echo "========================================Alexa\n";
     $Alexa = new AutosteuerungAlexaHandler();
     echo "Alexa Instanzen, StatusCount = ".$Alexa->getCountInstances()." : ";
@@ -370,16 +406,18 @@ if ($_IPS['SENDER']=="Execute")
 	
 	$table = $Alexa->writeAlexaConfig($alexaConfiguration,"",true);	// html Ausgabe
 	echo $table;
+
 	if ( isset($installedModules["DetectMovement"]) === true )
 		{
         echo "\n";
         echo "========================================DetectMovement\n";
         $detectMovement = new TestMovement($debug);
         $detectMovement->syncEventList($debug);       // speichert eventList und eventListDelete, früher Teil des constructs
-
+        
+        $TableEventsAS_ID				= IPS_GetObjectIDByIdent("TableEvents", $categoryId_Autosteuerung);
         $autosteuerung_config=Autosteuerung_GetEventConfiguration();
         $eventlist=$detectMovement->getAutoEventListTable($autosteuerung_config);
-        echo "Ergebnis der Analyse der Autosteuerungs Events wird in der Tabelle gespeichert.\n";
+        echo "Ergebnis der Analyse der Autosteuerungs Events wird in der Tabelle gespeichert ($TableEventsAS_ID).\n";
         //print_r($eventlist);
         $html=$detectMovement->writeEventlistTable($eventlist);
         SetValue($TableEventsAS_ID,$html);

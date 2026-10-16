@@ -105,7 +105,7 @@
 
         SetValue($variableId,$_IPS['VALUE']);
         $pcManager->RebuildGraph();
-
+        echo "done";
         }
 
 /*
@@ -117,25 +117,36 @@
         {
 
         echo "Report Execute aufgerufen:\n";
-        $value_config=$pcManager->getValueConfiguration();          // rausfinden welcher Report selektiert wurde
-        $config=$pcManager->getConfiguration();
+
+
+
+
         //print_R($value_config);
-        foreach ($value_config as $index => $configEntry) echo "  $index  ".json_encode($configEntry)."\n";
-        $result=false;
+        //foreach ($value_config as $index => $configEntry) echo "  $index  ".json_encode($configEntry)."\n";
+        //$result=false;
+        // rausfinden welches Chart ausgewählt wurde, alle config anzeigen
+        $config=$pcManager->getConfiguration();                     // alle Darstellungskonfigurationen laden
+        $value_config=$pcManager->getValueConfiguration();          // rausfinden welcher Report selektiert wurde und die Darstellungskonfiguration heraussuchen anhand des Namens
         foreach ($value_config as $valueIdx => $valueEntry)
             {
+            echo "  $valueIdx  ".str_pad(json_encode($valueEntry),80)."    ";                
             $variableIdValueDisplay = IPS_GetVariableIDByName(IPSRP_VAR_SELECTVALUE.$valueIdx, $categoryIdCommon);   
             if (GetValue($variableIdValueDisplay))                  // nur einer der Schalter ist auf 1
                 {
-                echo "Select $valueIdx \n";
+                echo "Select";
                 $resultIdx=$valueIdx;
                 if (isset($valueEntry["Name"]))
                     {
                     $name=$valueEntry["Name"];
                     if (isset($config[$name])) $resultConfig=$config[$name];
+                    //echo "    ".json_encode($resultConfig);
                     }
                 }
+            echo "\n";                
             }
+
+
+
         /* Type is Chart, abhängig von der Konfiguration wird die Formatierung der Auswahlvariable geändert */
         if (isset($value_config[$resultIdx][IPSRP_PROPERTY_VALUETYPE]))
             {
@@ -179,7 +190,8 @@
         echo "=============================================\n";
         echo "start ReBuildGraph mit Debug:\n";
         echo "=============================================\n";
-        $reportControl_Manager->RebuildGraph(true);         //true für Debug
+        $reportControl_Manager->setDebug(true);         //true für Debug
+        $reportControl_Manager->RebuildGraph();         
 
         if (false)
             {

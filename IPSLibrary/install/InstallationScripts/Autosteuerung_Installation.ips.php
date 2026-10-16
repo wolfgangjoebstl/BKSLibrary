@@ -94,14 +94,14 @@
 		{
 		$inst_modules.=str_pad($name,30)." ".$modules."\n";
 		}
-	if ($debug) echo $inst_modules."\n";
+	if ($debug>1) echo $inst_modules."\n";
 
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
 	if (isset ($installedModules["OperationCenter"])) 
         { 	
-        if ($debug) echo "  Modul OperationCenter ist installiert.\n"; 
+        if ($debug>1) echo "  Modul OperationCenter ist installiert.\n"; 
 		IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
 		IPSUtils_Include ("DeviceManagement_Library.class.php","IPSLibrary::app::modules::OperationCenter");
 		IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');	
@@ -118,7 +118,7 @@
 
 	if (isset ($installedModules["EvaluateHardware"])) 
         { 
-        if ($debug) echo "  Modul EvaluateHardware ist installiert.\n"; 
+        if ($debug>1) echo "  Modul EvaluateHardware ist installiert.\n"; 
         IPSUtils_Include ('EvaluateHardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
         IPSUtils_Include ('EvaluateHardware_Configuration.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');           // sonst werden die Event Listen überschrieben
         IPSUtils_Include ('EvaluateHardware_DeviceList.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');
@@ -131,7 +131,7 @@
 
     if (isset($installedModules["DetectMovement"]))
         {
-        if ($debug) echo "  Modul DetectMovement ist installiert.\n"; 
+        if ($debug>1) echo "  Modul DetectMovement ist installiert.\n"; 
         IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
         IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
         }
@@ -146,9 +146,9 @@
     $profileOps = new profileOps();         // local                Profilverwaltung
 
 	$scriptIdWebfrontControl   = IPS_GetScriptIDByName('WebfrontControl', $CategoryIdApp);
-	$scriptIdAutosteuerung   = IPS_GetScriptIDByName('Autosteuerung', $CategoryIdApp);
-	$scriptIdHeatControl   = IPS_GetScriptIDByName('Autosteuerung_HeatControl', $CategoryIdApp);
-	$scriptIdAlexaControl   = IPS_GetScriptIDByName('Autosteuerung_AlexaControl', $CategoryIdApp);
+	$scriptIdAutosteuerung     = IPS_GetScriptIDByName('Autosteuerung', $CategoryIdApp);
+	$scriptIdHeatControl       = IPS_GetScriptIDByName('Autosteuerung_HeatControl', $CategoryIdApp);
+	$scriptIdAlexaControl      = IPS_GetScriptIDByName('Autosteuerung_AlexaControl', $CategoryIdApp);
 	
 	$categoryId_Autosteuerung  = CreateCategory("Ansteuerung", $CategoryIdData, 10);            // Unterfunktionen wie Stromheizung, Anwesenheitsberechnung sind hier
 
@@ -193,8 +193,9 @@
  ********************************/
 
     $ao =  new archOps();
-    $ar = new AutosteuerungRegler();            // Heizungssteuerung, immer in der Loop
-    $ar->InitHeating($categoryId_Autosteuerung);
+    $ar = new AutosteuerungRegler();                        // Heizungssteuerung, immer in der Loop
+    $ar->InitHeating($categoryId_Autosteuerung);            // Anlegen der Variablen
+    $ar->DoHeating($categoryId_Autosteuerung);              // OIDs als Variablen zur Verfügung stellen
 
 /*******************************
  *
@@ -220,7 +221,7 @@
 	$RemoteVis_Enabled    = $moduleManager->GetConfigValueDef('Enabled', 'RemoteVis',false);
 	$WFC10_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'WFC10',false);
 	$WFC10User_Enabled    = $moduleManager->GetConfigValueDef('Enabled', 'WFC10User',false);
-	$Mobile_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'Mobile',false);
+	$Mobile_Enabled       = $moduleManager->GetConfigValueDef('Enabled', 'Mobile',false);
     $Retro_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'Retro',false);
 
 	if ($WFC10_Enabled==true)
@@ -253,7 +254,7 @@
 
 	if ($debug) echo "Darstellung der Variablenprofile für PowerLock im lokalem Bereich, wenn fehlt anlegen:\n";
 	$profilname=array("PowerLockBefehl"=>"update","PowerLockStatus"=>"update", );
-    $profileOps->synchronizeProfiles($profilname,$debug);             //true für Debug
+    $profileOps->synchronizeProfiles($profilname,($debug>1));             //true für Debug
 
     $componentHandling = new ComponentHandling();
     $DeviceManager     = new DeviceManagement();
@@ -264,7 +265,7 @@
     $deviceList = deviceList();            // Configuratoren sind als Function deklariert, ist in EvaluateHardware_Devicelist.inc.php
 
     // Aktuator
-    $resultKey=$componentHandling->getComponent($deviceList,["TYPECHAN" => "TYPE_POWERLOCK","REGISTER" => "KEYSTATE"],"Install",$debug);                        // true für Debug, bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben   
+    $resultKey=$componentHandling->getComponent($deviceList,["TYPECHAN" => "TYPE_POWERLOCK","REGISTER" => "KEYSTATE"],"Install",($debug>1));                        // true für Debug, bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben   
     $countPowerLock=(sizeof($resultKey));				
     $resulttext="Alle Tuerschloesser Aktuatoren ausgeben ($countPowerLock):\n";            
     $resulttext.=$DeviceManager->writeCheckStatus($resultKey);          
@@ -276,7 +277,7 @@
         }
 
     // Status
-    $resultState=$componentHandling->getComponent($deviceList,["TYPECHAN" => "TYPE_POWERLOCK","REGISTER" => "LOCKSTATE"],"Install",$debug);                        // true für Debug, bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben   
+    $resultState=$componentHandling->getComponent($deviceList,["TYPECHAN" => "TYPE_POWERLOCK","REGISTER" => "LOCKSTATE"],"Install",($debug>1));                        // true für Debug, bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben   
     $countPowerLock+=(sizeof($resultState));				
     $resulttext="Alle Tuerschloesser Stati ausgeben ($countPowerLock):\n";            
     $resulttext.=$DeviceManager->writeCheckStatus($resultState);          
@@ -331,7 +332,7 @@
      */
 
     $topology=get_UnifiedTopology();
-    $topologyPlusLinks=$DetectDeviceHandler->mergeTopologyObjects($topology,$channelEventList,$debug);        // true,2 for Debug, 1 für Warnings  Verwendet ~ in den Ortsangaben, dadurch werden die Orte wieder eindeutig ohne den Pfad zu wissen
+    $topologyPlusLinks=$DetectDeviceHandler->mergeTopologyObjects($topology,$channelEventList,($debug>1));        // true,2 for Debug, 1 für Warnings  Verwendet ~ in den Ortsangaben, dadurch werden die Orte wieder eindeutig ohne den Pfad zu wissen
 
     /* beeinflussung des Ergebnisses in EvaluateHardware_Configuration
      */
@@ -502,10 +503,10 @@
         // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
         if (strtoupper($AutoSetSwitch["PROFIL"])=="NULL")        // leere Optionen als String anlegen, damit sie nicht eine falsche 0 anzeigen
             { 
-            $AutosteuerungID = CreateVariableByName($categoryId_Autosteuerung,$AutoSetSwitch["NAME"], 3, "", false,  0, $scriptIdWebfrontControl);   /* 0 Boolean 1 Integer 2 Float 3 String */
+            $AutosteuerungID = CreateVariableByName($categoryId_Autosteuerung,$AutoSetSwitch["NAME"], 3, "", false,  990, $scriptIdWebfrontControl);   // 0 Boolean 1 Integer 2 Float 3 String 
             SetValue($AutosteuerungID,"");
             }
-        else $AutosteuerungID = CreateVariableByName($categoryId_Autosteuerung, $AutoSetSwitch["NAME"], 1, $AutoSetSwitch["PROFIL"], false, 0, $scriptIdWebfrontControl );  /* 0 Boolean 1 Integer 2 Float 3 String */        
+        else $AutosteuerungID = CreateVariableByName($categoryId_Autosteuerung, $AutoSetSwitch["NAME"], 1, $AutoSetSwitch["PROFIL"], false, 900, $scriptIdWebfrontControl );  // 0 Boolean 1 Integer 2 Float 3 String 
         echo "-------------------------------------------------------\n";
         echo "Bearbeite Autosetswitch : \"".$AutoSetSwitch["NAME"]."\"  \n";
         $name=$AutoSetSwitch["NAME"]; $tabname=$AutoSetSwitch["TABNAME"]; $owntab="Autosteuerung";
@@ -607,8 +608,8 @@
                     }
 
                 /* Schalter Anwesend */
-				if ($countAlexa>0) 	$StatusSchalterAnwesendID=CreateVariable("SchalterAnwesend",0, $AutosteuerungID,0,"AusEin-Boolean",$scriptIdAlexaControl,null,"");	
-				else $StatusSchalterAnwesendID=CreateVariable("SchalterAnwesend",0, $AutosteuerungID,0,"AusEin-Boolean",$scriptIdWebfrontControl,null,"");			
+				if ($countAlexa>0) 	$StatusSchalterAnwesendID = CreateVariable("SchalterAnwesend",0, $AutosteuerungID,0,"AusEin-Boolean",$scriptIdAlexaControl,null,"");	
+				else $StatusSchalterAnwesendID = CreateVariable("SchalterAnwesend",0, $AutosteuerungID,0,"AusEin-Boolean",$scriptIdWebfrontControl,null,"");			
 				$register->registerAutoEvent($StatusSchalterAnwesendID, $eventType, "", "");
 				AC_SetLoggingStatus($archiveHandlerID,$StatusSchalterAnwesendID,true);
 				AC_SetAggregationType($archiveHandlerID,$StatusSchalterAnwesendID,0);      /* normaler Wwert */
@@ -617,8 +618,8 @@
   				/* einfache Visualisierung der Bewegungswerte, testweise */
 				$StatusTableMapHtml   = CreateVariable("StatusTableView",   3 /*String*/,  $AutosteuerungID, 1010, '~HTMLBox');
 
-                $operate->setGeofencyAddressesToArchive($geofencies,true);  // true für Debug
-                $operate->linkGeofencyAddresses($geofencies, $AutosteuerungID,true);
+                $operate->setGeofencyAddressesToArchive($geofencies,$debug);  // true für Debug
+                $operate->linkGeofencyAddresses($geofencies, $AutosteuerungID,$debug);
 
                 if (isset ($webfront_links[$AutosteuerungID]["TABNAME"]) )      /* eigener Tab, eigene Nachrichtenleiste */
                     {
@@ -845,7 +846,7 @@
                     $inputMeasurement = CreateVariable("Nachricht_Input",3,$categoryId_NachrichtenMeasurement, 0, "",null,null,""  );   
                     $log_AlarmMeasurement=new Logging($setup["LogDirectory"]."Measurement.csv",$inputMeasurement,IPS_GetName(0).";Measurement;");
                     }
-                // zusaetzlich werden auch noich Funktionen eingeführt, um Bezug zur Setup config herstellen zu können
+                // zusaetzlich werden auch noch Funktionen eingeführt, um Bezug zur Setup config herstellen zu können
 
                 $webfront_links[$AutosteuerungID]=array_merge($webfront_links[$AutosteuerungID],defineWebfrontLink($AutoSetSwitch,'Measurement'));
                 $webFrontConfiguration = Autosteuerung_GetWebFrontConfiguration()["Administrator"];
@@ -861,11 +862,13 @@
                 $tabs[$tab]=array();
                 if (isset($AutoSetSwitch["FUNCTION"]))                  // bessere Darstellung mit Subtabs
                     {
-                    $tabs[$tab]["Auswertung"]["Up"][$auswertungID]=array();
-                    $tabs[$tab]["Auswertung"]["Up"][$auswertungID]["NAME"]=$AutoSetSwitch["NAME"];
+                    $tabs[$tab]["Auswertung"]["Up"]["Temp"]=$ar->tempToWeb();
+                    $tabs[$tab]["Auswertung"]["Up"]["Kessel"]=$ar->kesselToWeb();
+                    $tabs[$tab]["Auswertung"]["Up"]["@CONFIG"]=["WFCSplitpanel"];
+
                     $tabs[$tab]["Auswertung"]["Down"][$auswertungID]=array();
                     $tabs[$tab]["Auswertung"]["Down"][$auswertungID]["NAME"]="Down";
-                    $tabs[$tab]["Auswertung"]["@CONFIG"]="WFCSplitpanel";                           // Default Config
+                    $tabs[$tab]["Auswertung"]["@CONFIG"]=["WFCSplitpanel"];                           // Default Config
                     }
                 else    
                     {
@@ -877,9 +880,19 @@
                     {  				
 			    	$webfront_links[$AutosteuerungID]["OID_R"]=$inputMeasurement;											/* Darstellung rechts im Webfront, immer eine Nachrichtenliste */				
                     $nachrichtenID = $webfront_links[$AutosteuerungID]["OID_R"];
-                    $tabs[$tab]["Nachrichten"][$nachrichtenID]=array();
-                    $tabs[$tab]["Nachrichten"][$nachrichtenID]["NAME"]=$AutoSetSwitch["NAME"];
-                    $tabs[$tab]["Nachrichten"][$nachrichtenID]["ORDER"]=100;  
+                    if (isset($AutoSetSwitch["FUNCTION"]))                  // bessere Darstellung mit Subtabs
+                        {
+                        $tabs[$tab]["Nachrichten"][$nachrichtenID]=array();
+                        $tabs[$tab]["Nachrichten"][$nachrichtenID]["NAME"]=$AutoSetSwitch["NAME"];
+                        $tabs[$tab]["Nachrichten"][$nachrichtenID]["ORDER"]=100;  
+                        //$tabs[$tab]["Nachrichten"]["@CONFIG"]=["link"];               // wenn nichts steht automatisch Gruppe
+                        }
+                    else
+                        {
+                        $tabs[$tab]["Nachrichten"][$nachrichtenID]=array();
+                        $tabs[$tab]["Nachrichten"][$nachrichtenID]["NAME"]=$AutoSetSwitch["NAME"];
+                        $tabs[$tab]["Nachrichten"][$nachrichtenID]["ORDER"]=100;  
+                        }
                     } 
                 break;	
 			case "STROMHEIZUNG":

@@ -4121,7 +4121,13 @@ class archiveOps
                                         if ($config["ShowTable"]["align"]=="daily")  $timestamp = strtotime(date("d.m.Y",$timestamp));
                                         if ($config["ShowTable"]["align"]=="hourly")  $timestamp = strtotime(date("d.m.Y H:00",$timestamp));
                                         if ($config["ShowTable"]["align"]=="minutely")  $timestamp = strtotime(date("d.m.Y H:i",$timestamp));
-                                        //  oder einen Zielwert übernehmen wenn Abstand nicht mehr als x ist
+                                        if ($config["ShowTable"]["align"]=="interval")
+                                            {
+                                            $interval=10*60;         // 5 Minuten
+                                            if (isset($config["ShowTable"]["aligninterval"])) $interval=$config["ShowTable"]["aligninterval"];
+                                            $time=(integer)($timestamp/$interval);    
+                                            $timestamp=$time*$interval;
+                                            }
                                         }
                                     if  (isset($config["ShowTable"]["adjust"]))    // nur bearbeiten wenn Parameter gesetzt, für eine bestimmte Zahlenreihe den Zeitstempel verschieben
                                         {     
@@ -4454,7 +4460,7 @@ class archiveOps
                 $lastTime  = $werte[array_key_first($werte)]["TimeStamp"];
                 if ($debug) echo "   Read batch from ".date("d.m.Y H:i:s",$firstTime)."  to  ".date("d.m.Y H:i:s",$lastTime)." with ".count($werte)." Values.\n";
                 $endtime=$firstTime-1;                  // keine doppelten Werte, eine Sekunde abziehen 
-                if ($config["manAggregate"]) $config["carryOver"] = $this->manualDailyAggregate($werteTotal,$werte,$config,$debug1);      // werteTotal ist ergebnis, werte ist Input, config 
+                if ($config["manAggregate"]) $config["carryOver"] = $this->manualDailyAggregate($werteTotal,$werte,$config,$debug1);      // getArchivedValues, werteTotal ist ergebnis, werte ist Input, config 
                 else 
                     {
                     $this->manualDailyEvaluate($werteTotal,$werte,$config,$debug1);      // werteTotal ist ergebnis, werte ist Input, config
@@ -4596,7 +4602,7 @@ class archiveOps
                 $lastTime  = $werte[array_key_first($werte)]["TimeStamp"];
                 if ($debug) echo "   Read batch from ".date("d.m.Y H:i:s",$firstTime)."  to  ".date("d.m.Y H:i:s",$lastTime)." with ".count($werte)." Values.\n";
                 $endtime=$firstTime-1;                  // keine doppelten Werte, eine Sekunde abziehen 
-                if ($config["manAggregate"]) $config["carryOver"] = $this->manualDailyAggregate($werteTotal,$werte,$config,$debug1);      // werteTotal ist ergebnis, werte ist Input, config 
+                if ($config["manAggregate"]) $config["carryOver"] = $this->manualDailyAggregate($werteTotal,$werte,$config,$debug1);      // getArchivedCounters, werteTotal ist ergebnis, werte ist Input, config 
                 else 
                     {
                     $this->manualDailyCounterEvaluate($werteTotal,$werte,$config,$debug);      // werteTotal ist ergebnis, werte ist Input, config
@@ -4658,45 +4664,138 @@ class archiveOps
         return ($werte);
         }
 
-    /* manualDailyAggregate
-     * zum Check die Datenflut in verschiedenen Perioden zusammenzählen. Die Symcon Aggregate Funktionen sind dafür nicht so wirklich geeignet.
-     * ich habe regelmaessige Werte und die will ich zusammenzählen, keinen Mittelwert. Das ist nicht so einfach mit Symcon hinzubekommen.
-     * mit Increment kann ich ide Methode des Aggregieren einstellen.
-     * 
-     * zusätzlich zum Daily Aggreagate gibt es auch wöchentliche oder monatliche Auswertungen 
-     * das Ergebnis wird im Array result gespeichert, return ist etwas anderes, das Ergebnis
-     * result wird wenn nicht leer einfach länger, zeitlich und nach Index wird einfach hinten dran angehängt, index = 0,1,2....n
+    /* archiveOps::getArchivedData
+     * aufgerufen von  getValues wenn Parameter Aggregated auf false steht
+     * es gibt keine Funktion die Werte holt, also rund um AC_getLogged was machen
+     * Zwischen Start und Endtime werden Werte aus dem Archiv getLogged geholt, es gibt keine 10.000er Begrenzung, allerdings wird der Speicher schnell knapp
      *
+     * Es gibt eine manuelle Aggregation die sowohl die Summe als auch den Average und Max/Min berechnen kann. 
      * Die Funktion kann auch die Übergabe von einer 10.000 Tranche zur nächsten
      *    if ($config["manAggregate"]) $config["carryOver"] = $this->manualDailyAggregate($werteTotal,$werte,$config,$debug1);      // werteTotal ist ergebnis, werte ist Input, config 
      *    else {$this->manualDailyEvaluate($werteTotal,$werte,$config,$debug1); $werteTotal = array_merge($werteTotal,$werte); }
-     *     
-     * config Einstellungen
-     *      manAggregate        hourly, 4hours, daily, weekly, monthly
-     *                          array wäre auch möglich für detailliertere Aufgabenstellungen, tbd
-     *      carryOver           Übertrag, wenn der halbe Tag noch nicht fertig wird die bisherige Summe als Teil der Konfiguration übergeben
-     *      counter             Zähler oder Standard, zusätzliche Information ob die Werte steigen oder nur der Vorschub sind
-     *      means.Full          pointer auf die class für die Mittelwertsberechnung
-     *      means.Day           pointer auf die class
      *
-     * unterschiedliche Arten der Berechnung des Aggregates, Increment = [0,1,2]
-     *      0 gut geeignet für 15 Minuten Energiewerte, wird nur bei Daily verwendet
-     *      1 für nicht so standardisiserte Werte, keine Berücksichtigung der aufgelaufenen Werte zwischen den Einzelwerten
-     *      2 für Zählerwerte, Differenz ist die Aggregation
+     * es wird meansCalc verwendet um die Datenmengen vorab zu analysieren, Ergebnis Auswertung wird am Ende präsentiert
+     *
+     * config auch qualifizieren, aus der Config werden benötigt
+     *      StartTime
+     *      EndTime
+     *      manAggregate    verwendet manualDailyAggregate
+     *
+     *
      *
      */
-    public function manualDailyAggregate(&$result,$werte,$config,$debug=false)
+    public function getArchivedData($werte,$configInput=array(),$debug=false)
         {
-        //$debug=true;            // overwrite for failure analysis
+        //if ($debug) $debug=false;
+        // Konfiguration vorbereiten
+        $gaps=false;                        // wen nicht verwendet wird, zumindest definiert
+        $remOID=false;  	                // anstelle lokaler Archive, die Archive von einem Remote Server abfragen
+        $statistics = new statistics();        
+        $config = $statistics->setConfiguration($configInput);          // Konfiguration qualifizieren
+        // OID vom Archiv ermitteln
+        if ($debug) 
+            {
+            if ($debug>1) echo "   getArchivedData(Array,".json_encode($configInput)."...)\n";          
+            else echo "   getArchivedData(Array, ...)\n";
+            echo "      manuelle Aggregation wird durchgeführt: ".json_encode($config["manAggregate"])."\n";
+            }
 
-        // Configuration config klären
+        $werteTotal=array(); 
+        //print_R($config);   
+        $this->configStartEndTime($config);         // transforms config Start/Endtime to Unixtime
+
+        /* Mittelwertberechnung von analyseValues verwenden und vorbereiten */
+        $means=array();                                          // Speicherplatz im Ergebnis zur Verfügung stellen
+        $config["Means"]["Full"]   = new meansCalc($means, "Full");       	                        // Full, ohne Parameter wird der ganze Datensatz (zwischen Start und Ende) genommen
+        $config["Means"]["Day"]    = new meansCalc($means, "Day",2000);                           // Ergebnis in means[Day]
+        $maxminFull = $config["Means"]["Full"];
+        $maxminDay = $config["Means"]["Day"];
+
+        $config["carryOver"]=array();
+        $config["counter"]=0;                                   // aufpassen Aggregation ist anders
+        if ($config["maxDistance"]>0)                       // Eventuell Gapanalyse machen
+            {
+            if ($debug) echo "Do distance check for more than ".$config["maxDistance"]." hours before cleanup Data and store.\n";
+            $gaps=array();    
+            $config["Gaps"] = new gapsEval($gaps, "Hours",$config,$debug);       	                        // Full, ohne Parameter wird der ganze Datensatz (zwischen Start und Ende) genommen
+            }
+        $starttime = $config["StartTime"]; $endtime = $config["EndTime"];
+        $debug1=true;
+
+        if ( ($werte !== false) && (count($werte)>0) )
+            {
+            //print_r($werte);
+            //if ($debug) echo "AC_GetLoggedValues von ".date("d.m.Y H:i:s",$starttime)." bis ".date("d.m.Y H:i:s",$endtime)."\n";
+            $firstTime = $werte[array_key_last($werte)]["TimeStamp"];
+            $lastTime  = $werte[array_key_first($werte)]["TimeStamp"];
+            if ($debug) echo "      Read batch from ".date("d.m.Y H:i:s",$firstTime)."  to  ".date("d.m.Y H:i:s",$lastTime)." with ".count($werte)." Values.\n";
+            $endtime=$firstTime-1;                  // keine doppelten Werte, eine Sekunde abziehen 
+            if ($config["manAggregate"]) $config["carryOver"] = $this->manualDailyAggregate($werteTotal,$werte,$config,$debug1);      // getArchivedData,werteTotal ist ergebnis, werte ist Input, config 
+            else 
+                {
+                $this->manualDailyEvaluate($werteTotal,$werte,$config,$debug1);      // werteTotal ist ergebnis, werte ist Input, config
+                $werteTotal = array_merge($werteTotal,$werte);
+                }
+            }
+        else 
+            {
+            if ($config["Warning"]) echo "Warning, retrieving Logging Data for $oid from ".$config["StartTime"]." to ".$config["EndTime"]." results to empty or fail.\n";
+            $werte=array();
+            }
+
+        $maxminFull->calculate();                   // Max Min Werte im Ergebnis Array maxmin abspeichern
+        $maxminDay->calculate();                   // Max Min Werte im Ergebnis Array maxmin abspeichern
+        if ($debug) 
+            {
+            echo "Ergebnis getArchivedValues Count ".count($werteTotal)."\n";
+            if (count($werteTotal)<20) 
+                {
+                foreach ($werteTotal as $index => $wert) echo "$index ".date("d.m.Y H:i:s",$wert["TimeStamp"])."   ".$wert["Value"]."\n";
+                }
+            //print_r($means);
+            $maxminFull->print();
+            $maxminDay->print();
+            if ($gaps) print_r($gaps);                  // werden sonst nicht weiter verwendet
+            }
+        if ($gaps) $this->warnings=$gaps;
+        return($werteTotal);
+        }
+
+    private function evalConfigmanAgg(&$config,$debug=false)
+        {
         if (isset(($config["manAggregate"]))===false) $config["manAggregate"]=true;
-        if ($debug) echo "manualDailyAggregate aufgerufen mit ".json_encode($config["manAggregate"]).".\n";
-        if (is_array($result)===false) return (false);                  // $result wird als array übergeben, damit kann man mehrere Ergebnisse zusammenfassen
-
         if (is_array($config["manAggregate"]))
             {
-
+            // noch nicht implementiert
+            if ($debug) print_R($config["manAggregate"]);
+            switch (strtoupper($config["manAggregate"]["Aggregate"]))
+                {
+                case "HOURLY":
+                    $manAggregate=0;
+                    $increment=0;                       // unterschiedliche Funktionen bei der Integration der Werte, geeignet für 15 Minutenwerte     
+                    break;
+                case "4HOURS":
+                    $manAggregate=40;
+                    $increment=0;                       // unterschiedliche Funktionen bei der Integration der Werte, geeignet für 15 Minutenwerte     
+                    break;
+                case "DAILY":
+                    $manAggregate=1;
+                    $increment=1;                       // unterschiedliche Funktionen bei der Integration der Werte, 0 geeignet für 15 Minutenwerte     , 3 für temperaturwerte
+                    break;
+                case "WEEKLY";
+                    $manAggregate=2;
+                    $increment=1;                       
+                    break;
+                case "MONTHLY";
+                    $manAggregate=3;         
+                    $increment=1;
+                    break; 
+                default:
+                    echo "Warning, do not understand : ".json_encode($config["manAggregate"])."  \n";
+                    $manAggregate=1;
+                    $increment=0; 
+                    break;                    
+                }
             }
         else
             {
@@ -4734,6 +4833,46 @@ class archiveOps
                 }
             if ($debug) echo "Aggregated is configured with ".$config["manAggregate"]." converted to internal modes :  manAggregate $manAggregate und increment $increment.\n";                
             }
+
+        return ([$manAggregate,$increment]);
+        }
+
+    /* manualDailyAggregate
+     * zum Check die Datenflut in verschiedenen Perioden zusammenzählen. Die Symcon Aggregate Funktionen sind dafür nicht so wirklich geeignet.
+     * ich habe regelmaessige Werte und die will ich zusammenzählen, keinen Mittelwert. Das ist nicht so einfach mit Symcon hinzubekommen.
+     * mit Increment kann ich die Methode des Aggregieren einstellen.
+     * 
+     * zusätzlich zum Daily Aggreagate gibt es auch wöchentliche oder monatliche Auswertungen 
+     * das Ergebnis wird im Array result gespeichert, return ist etwas anderes, das Ergebnis
+     * result wird wenn nicht leer einfach länger, zeitlich und nach Index wird einfach hinten dran angehängt, index = 0,1,2....n
+     *
+     * Die Funktion kann auch die Übergabe von einer 10.000 Tranche zur nächsten
+     *    if ($config["manAggregate"]) $config["carryOver"] = $this->manualDailyAggregate($werteTotal,$werte,$config,$debug1);      // werteTotal ist ergebnis, werte ist Input, config 
+     *    else {$this->manualDailyEvaluate($werteTotal,$werte,$config,$debug1); $werteTotal = array_merge($werteTotal,$werte); }
+     *     
+     * config Einstellungen
+     *      manAggregate        hourly, 4hours, daily, weekly, monthly
+     *                          array wäre auch möglich für detailliertere Aufgabenstellungen, tbd
+     *      carryOver           Übertrag, wenn der halbe Tag noch nicht fertig wird die bisherige Summe als Teil der Konfiguration übergeben
+     *      counter             Zähler oder Standard, zusätzliche Information ob die Werte steigen oder nur der Vorschub sind
+     *      means.Full          pointer auf die class für die Mittelwertsberechnung
+     *      means.Day           pointer auf die class
+     *
+     * unterschiedliche Arten der Berechnung des Aggregates, Increment = [0,1,2]
+     *      0 gut geeignet für 15 Minuten Energiewerte, wird nur bei Daily verwendet
+     *      1 für nicht so standardisiserte Werte, keine Berücksichtigung der aufgelaufenen Werte zwischen den Einzelwerten
+     *      2 für Zählerwerte, Differenz ist die Aggregation
+     *
+     */
+    public function manualDailyAggregate(&$result,$werte,$config,$debug=false)
+        {
+        //$debug=true;            // overwrite for failure analysis
+
+        // Configuration config klären
+        if (is_array($result)===false) return (false);                  // $result wird als array übergeben, damit kann man mehrere Ergebnisse zusammenfassen
+
+        [$manAggregate,$increment]=$this->evalConfigmanAgg($config);
+        if ($debug) echo "manualDailyAggregate aufgerufen mit ".json_encode($config["manAggregate"]).". ($manAggregate,$increment) \n";
 
         // mit welchem Index hängen wir die Daten an die bestehenden dran
         if (count($result)==0) $index=0;              // Wir brauchen einen Index zum abspeichern der Werte, wenn leer beginnen wir mit 0
@@ -4773,25 +4912,30 @@ class archiveOps
         else $maxminFull = new maxminCalc($maxmin,"Full");       	                        // Full, ohne Parameter wird der ganze Datensatz (zwischen Start und Ende) genommen
         if (isset($config["Means"]["Day"])) $maxminDay = $config["Means"]["Day"];
         else $maxminDay = new maxminCalc($maxmin,"Day");
+        echo "maxminFull maxminCalc updateConfig where is error\n";
         $maxminFull->updateConfig($config);             // Fehlermeldung wenn maxminCalc verwendet wird
         $maxminDay->updateConfig($config);
         
         if (isset($config["Gaps"])) $gaps = $config["Gaps"];            // die class gapsEval
         else $gaps=false;
 
-        // werte ist input und result ist output array
+        /* werte ist input und result ist output array
+         * unterstützt $maxminFull,$maxminDay,$gaps (wenn configuriert)
+         */
         foreach($werte as $wert)            // die Werte analysieren und bearbeiten, Standardfunktionen verwenden
             {
             $maxminFull->addValue($wert);
             $maxminDay->addValue($wert);
             if ($gaps) $gaps->addValue($wert);              // Gaps ermitteln
             
+            $aktwert=(float)$wert['Value'];
             $zeit=$wert['TimeStamp'];
+
+            // für Übertrag
+            $stunde=date("H", $zeit);
             $tag=date("Ymd", $zeit);                        // zum aggregieren brauchen wir die Änderungen des Tages/Woche, Monat
             $woche=date("YW", $zeit);
             $monat=date("Ym", $zeit);
-
-            $aktwert=(float)$wert['Value'];
 
             if ($initial)       // interne Vorbereitung
                 {
@@ -4895,7 +5039,8 @@ class archiveOps
                         $index++;                      
                         $neuwert=$aktwert; 
                         break;
-                    case 0:                                         // Standard Logging, Statuswert, daher kompletten Bereich zusammenzählen 
+                    case 0:                         // Standard Logging, Statuswert, daher kompletten Bereich zusammenzählen
+                    case 3:                         // Value ist der Avg                 
                         if ($direction=="past")
                             {
                             if (true)       // so wie increment 1, geändert damit mit log.Wien zusammenpasst
@@ -4911,8 +5056,8 @@ class archiveOps
                             $result[$index]["TimeStamp"]=$altzeit;
                             $countPeriode--;
                             $count2=$countPeriode;          // eh nur zum anzeigen
-                            if ($countPeriode!=0) $result[$index]["Avg"]=$ergebnisTag/$countPeriode;            // Fehler abfangen und lieber keinen Wert
-                            else $result[$index]["Avg"]=0;
+                            if ($countPeriode!=0) $average=$ergebnisTag/$countPeriode;            // Fehler abfangen und lieber keinen Wert
+                            else $average=0;
                             $countPeriode=2; 
                             if ($debug) echo "Periodenende erkannt, $stunde / $interval Summe Periode: $ergebnisTag Weiter mit : $ergebnis \n";
                             }
@@ -4923,12 +5068,21 @@ class archiveOps
                             $result[$index]["TimeStamp"]=$zeit;
                             $countPeriode++;
                             $count2=$countPeriode;          // eh nur zum anzeigen
-                            if ($countPeriode!=0) $result[$index]["Avg"]=$ergebnisTag/$countPeriode;
-                            else $result[$index]["Avg"]=0;
+                            if ($countPeriode!=0) $average=$ergebnisTag/$countPeriode;
+                            else $average=0;
                             $countPeriode=0; 
                             }
                         // Werte übernehmen
-                        $result[$index]["Value"]=$ergebnisTag;
+                        if ($increment==3) 
+                            {
+                            $result[$index]["Value"]=$average;
+                            $result[$index]["Avg"]=$average;                    // muss auch da sein, dem nachgehen, Warning: Undefined array key "Avg" in C:\ProgramData\Symcon\scripts\IPSLibrary\AllgemeineDefinitionen.inc.php on line 8648
+                            }
+                        else 
+                            {
+                            $result[$index]["Value"]=$ergebnisTag;
+                            $result[$index]["Avg"]=$average;
+                            }
                         $result[$index]["Min"]=$min; $result[$index]["MinTime"]=$minTime; $min=false;
                         $result[$index]["Max"]=$max; $result[$index]["MaxTime"]=$maxTime; $max=false;
                         $index++;
@@ -4941,7 +5095,7 @@ class archiveOps
                 $vorigeWoche=$woche;
                 $vorigeMonat=$monat;                    
                 }
-            else                // innerhalb eines Tages/woche/Monat
+            else                // innerhalb eines Stunde/4Stunden/Tag/Woche/Monat
                 {
                 $showAgg=false;                    
                 /* Übertrag von den vorigen Messwerten sind Ergebnis 
@@ -4964,6 +5118,7 @@ class archiveOps
                         $count2++;
                         break;
                     case 0:                                     // Statuswert, daher kompletten Bereich zusammenzählen , für Tageswerte
+                    case 3:
                         $ergebnis+=$aktwert;
                         if (($max===false) || ($max<$aktwert)) { $max=$aktwert; $maxTime=$wert['TimeStamp']; } 
                         if (($min===false) || ($min>$aktwert)) { $min=$aktwert; $minTime=$wert['TimeStamp']; } 
@@ -4998,7 +5153,11 @@ class archiveOps
                  */
                 if ($showAgg && ($showAggCount++<20))
                     {
-                    if ($debug && $showAgg) echo "   ".date("W d.m.Y H:i:s", $result[$index-1]['TimeStamp']) . " ergibt in Summe: " . str_pad(number_format($result[$index-1]["Value"], 3, ".", ""),17)."   ".str_pad(number_format($result[$index-1]["Avg"], 3, ".", ""),17)."  $altwert  $neuwert  $count2". PHP_EOL;
+                    if ($debug && $showAgg) 
+                        {
+                        if (isset($result[$index-1]["Avg"])) echo "   ".date("W d.m.Y H:i:s", $result[$index-1]['TimeStamp']) . " ergibt in Summe: " . str_pad(number_format($result[$index-1]["Value"], 3, ".", ""),17)."   ".str_pad(number_format($result[$index-1]["Avg"], 3, ".", ""),17)."  $altwert  $neuwert  $count2". PHP_EOL;
+                        else echo "   ".date("W d.m.Y H:i:s", $result[$index-1]['TimeStamp']) . " ergibt in Summe: " . str_pad(number_format($result[$index-1]["Value"], 3, ".", ""),17)."   ".str_pad("",17)."  $altwert  $neuwert  $count2". PHP_EOL;
+                        }
                     }
                 }
             if ($increment==2) { $altwert2=$aktwert; $altzeit2=$zeit; }          // damit die Differenz in Display noch berechnet werden kann
@@ -5106,6 +5265,11 @@ class archiveOps
      * Get/AnalyseValues,ArchiveOps, Abgrenzung klar, eine kann auch ohne Zeitangabe Werte verarbeiten
      *
      * kann bereits beide Formate, Logged [Value/TimeStamp/Duration] und aggregated [Avg/TimeStamp/Min/Max] , und kann auch ein Array [Value/TimeStamp] verarbeiten
+     * abhängig von der Art der Daten wird
+     *          ["DataType"]=="Array"       statt einer oid wird ein ganzes array übergeben, getArchivedxx wird nicht aufgerufen
+     *          ["DataType"]=="Counter"     die Werte erhöhen sich kontinuierlich
+     *
+     *
      * zusätzlich wird ein Remote Server Format mit Server::Dateiname unterstützt.
      *
      * verwendete Klassen:
@@ -5238,9 +5402,13 @@ class archiveOps
         // Wertebereich festlegen, Vorwerte einlesen, Fehler erkennen und bearbeiten 
         if  ($config["DataType"]=="Array")
             {
+            if ($debug>1) $debug1=$debug-1; else $debug1=false;                
             $werte=$oid;
             $oid="Array";           // Ist in Result ein Key, praktischerweise umbenennen
             if (is_array($werte)===false) $werte=false;
+            $werte = $this->getArchivedData($werte,$config,$debug1);   
+            if ($werte===false) $werte=array();
+            if (isset($werte["Description"])) print_R($werte["Description"]);                     
             }
         elseif  ($config["DataType"]==="Counter")     //logged Werte auslesen, Zählerstände in Vorschübe ändern
             {
@@ -5333,7 +5501,7 @@ class archiveOps
             if ($debug>1) echo "   --> Reihenfolge, neuerster Wert zuerst, hat niedrigsten Index, andersrum sortieren.\n";
             krsort($werte);             // andersrum sortieren
             }
-        $this->cleanupStoreValues($werte,$oid,$config,$debug);          // Werte bereinigen und in this->result[$oid][Values] abpeichern, config übernimmt maxLogsperInterval            
+        $this->cleanupStoreValues($werte,$oid,$config,$debug);          // Werte von get Values bereinigen und in this->result[$oid][Values] abpeichern, config übernimmt maxLogsperInterval            
         $this->processOnData($oid,$config,$debug);                        // Werte bearbeiten 
         if ($debug>1) echo "Memorysize after calculateSplitOnData: ".getNiceFileSize(memory_get_usage(true),false)."/".getNiceFileSize(memory_get_usage(false),false)."\n"; // 123 kb\n";
 
@@ -5689,7 +5857,7 @@ class archiveOps
             //print_R(array_key_last($werte));
             }
 
-        $this->cleanupStoreValues($werte,$oid,$maxLogsperInterval,$debug);          // Werte bereinigen und in result[$oid][Values] abpeichern
+        $this->cleanupStoreValues($werte,$oid,$maxLogsperInterval,$debug);          // Werte für analyse bereinigen und in result[$oid][Values] abpeichern
         unset($werte);          //free memory
         $this->calculateSplitOnData($oid,$config,$debug);                             // true debug
         $check = $this->countperIntervalValues($this->result[$oid]["Values"],$debug);        // true Debug, Aufruf von analyseValues
@@ -6289,8 +6457,10 @@ class archiveOps
      * so wie calculateSplitOnData als Preprocess bevor die Daten gespeichert werden eine allgemeine Post Process Function auf Basis der gespeicherten Daten schaffen
      * Funktion arbeitet bereits auf Basis this->result.$oid.Values, alternative Funktion für on the fly Daten
      * zuerst Anzahl gespeicherter Daten feststellen, Go wenn >1
+     * $configPoD wird gesetzt wenn $config["processOnData"] angefordert wurde, es gibt zur Auswahl folgende
      *  Funktionen:
      *      Delta
+     *      Range [max,min]
      *
      */
     private function processOnData($oid,$config,$debug=false)
@@ -6987,6 +7157,22 @@ class statistics
         return($config);
         }
 
+    /* meanscalc::updateConfig nachträgliche Konfiguration
+     * wenn this->config nicht mehr false ist dann etwas unternehmen
+     */
+    function updateConfig($configInput=false, $extraDebug=false)
+        {
+        echo "updateConfig  \n";
+        if ($extraDebug) $this->extendedDebug=true;
+        $this->config=$this->setConfiguration($configInput);
+        if ( ($this->config["Integrate"]) )
+            {
+            if ($this->extendedDebug) echo "meansCalc::updateConfig Integrate\n";
+            $this->configDelta=true;
+            }
+        //print_r($this->config);
+        }
+
     /* aus einem Value/Timestamp Paar den Value ausgeben
      */
     public function wert($input)
@@ -7095,21 +7281,6 @@ class meansCalc extends statistics
 
         $this->name=$name;
         return (true);
-        }
-
-    /* meanscalc::updateConfig nachträgliche Konfiguration
-     * wenn this->config nicht mehr false ist dann etwas unternehmen
-     */
-    function updateConfig($configInput=false, $extraDebug=false)
-        {
-        if ($extraDebug) $this->extendedDebug=true;
-        $this->config=$this->setConfiguration($configInput);
-        if ( ($this->config["Integrate"]) )
-            {
-            if ($this->extendedDebug) echo "meansCalc::updateConfig Integrate\n";
-            $this->configDelta=true;
-            }
-        //print_r($this->config);
         }
 
     /* Übergabe wert[value] und wert[TimeStamp] oder wert

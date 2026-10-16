@@ -163,7 +163,7 @@ class Gartensteuerung
 			{
             if ($this->debug) echo "    Modul Stromheizung installiert, Schalten Gartenpumpe über dieses Modul möglich.\n";
 			include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Stromheizung\IPSHeat.inc.php");						
-			$this->CategoryId_Stromheizung			= @IPS_GetObjectIDByName("Stromheizung",$this->CategoryId_Ansteuerung);
+			//$this->CategoryId_Stromheizung			= @IPS_GetObjectIDByName("Stromheizung",$this->CategoryId_Ansteuerung);
 			$this->heatManager = new IPSHeat_Manager();
 			
 			$baseId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Stromheizung');
