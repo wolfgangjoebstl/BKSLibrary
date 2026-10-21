@@ -1287,7 +1287,33 @@
                 $ar->DoHeating($categoryId_Autosteuerung); 
                 $result = $ar->interpolateHourly(array_merge($result,$ar->prognoseWeatherData()));
 
-        $temp2=array();
+                echo "Tempwerte vereinfachen, aggregieren:\n";
+                $debug=false;
+                        $analyseConfig3=["StartTime"=>$CfgDaten["StartTime"],"EndTime"=>$CfgDaten["EndTime"]];
+                        //$analyseConfig3["Aggregated"]="daily";            // da gibt es kein Average
+                        $analyseConfig3["DataType"]="Array";
+                        //$analyseConfig3["Aggregated"]=true;
+                        $analyseConfig3["manAggregate"]=["Aggregate" => "daily", "Format" => "standard"];                   // noch nicht implementiert
+                        //$analyseConfig3["manAggregate"]="daily";
+                        $analyseConfig3["meansRoll"]["direction"]="Backward";                            // Messwertedarstellung 0 ist der älteste Wert, der nächste Wert ist schon teil des Mittelwertes
+                        $analyseConfig3["meansRoll"]["TimeStampPos"]="Mid";                                             // wenn nicht Mid, wird zum Zeitstempel, an dem berechnet wurde abgespeichert
+                        $resultday = $archiveOps->getValues($result,$analyseConfig3,($debug))["Values"];
+
+                        //print_r($resultday);
+                        $ergebnis=array();
+                        foreach ($resultday as $index => $value)
+                            {
+                            echo str_pad(date("d.m.Y H:i",$value["TimeStamp"]),20).str_pad($value["Avg"],15)."\n";
+                            $ergebnis[$index]["TimeStamp"]=$value["TimeStamp"];
+                            $ergebnis[$index]["Value"] = $value["Avg"];  
+                            }
+                $ca = new Calculations;
+                $temp2 = $ca->damping($result,12);
+                $temp3 = $ca->damping($result,72);
+
+                $CfgDaten["EndTime"]=$CfgDaten["EndTime"]+5*24*60*60;
+
+        /*    $temp2=array();
         $index=0; $first=true;
         $tauStunden = 12;
         $tauSekunden = $tauStunden * 3600;
@@ -1314,7 +1340,7 @@
                 $temp2[$index]["Value"]=$tempGedaempft;
                 $temp2[$index]["TimeStamp"]=$actTime;
 
-                /* starttime of Simulation is switch off date/time
+                starttime of Simulation is switch off date/time
                 if ($actTime>$simTime)
                     {
                     if ($actTime>time())  
@@ -1331,16 +1357,16 @@
                         $simTimeTrigger=$actTime;
                         //if ($displayData) echo " ************* ";    
                         }
-                    } */
+                    } 
                 }
             //if (($actTime>$displayTime) && ($displayData)) echo "\n";
             $oldtime=$value["TimeStamp"];
             $oldValue=$value["Value"];   
             $index++;             
-            }
+            }   
 
 
-                $CfgDaten["EndTime"]=$CfgDaten["EndTime"]+5*24*60*60;
+
 
                 $scale=1;
                 $serie=array();
@@ -1370,7 +1396,28 @@
                     if (isset($entry["Value"])) $serie['data'][] = ["TimeStamp" =>  $entry["TimeStamp"],"y" => ($entry["Value"]*$scale)];
                     if (isset($entry["Avg"])) $serie['data'][] = ["TimeStamp" =>  $entry["TimeStamp"],"y" => ($entry["Avg"]*$scale)];               // auch für aggregated Werte
                     }   
-                $CfgDaten['series'][$index++] = $serie;   
+                $CfgDaten['series'][$index++] = $serie;   */
+
+                                // several lines shown
+                $serie=array();
+                $serie['name'] = "Heating";
+                $serie['type'] = "line";
+                $CfgDaten['series'][$index++] = $this->copyserie($serie,$result,$CfgDaten["StartTime"]);   
+
+                $serie=array();
+                $serie['name'] = "HeatingTemp";
+                $serie['type'] = "line";
+                $CfgDaten['series'][$index++] = $this->copyserie($serie,$temp2,$CfgDaten["StartTime"]);   
+
+                $serie=array();
+                $serie['name'] = "HeatingTemp2";
+                $serie['type'] = "line";
+                $CfgDaten['series'][$index++] = $this->copyserie($serie,$temp3,$CfgDaten["StartTime"]);   
+
+                $serie=array();
+                $serie['name'] = "HeatingDays";
+                $serie['type'] = "line"; 
+                $CfgDaten['series'][$index++] = $this->copyserie($serie,$ergebnis,$CfgDaten["StartTime"]); 
 
                 }
             else

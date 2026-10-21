@@ -238,6 +238,7 @@ class AutosteuerungHandler
                 configfileParser($configHeating[$module], $config[$module], ["ruecklauf","ruecklaufID","RUECKLAUF","Ruecklauf"],"ruecklauf",null);  
                 configfileParser($configHeating[$module], $config[$module], ["pumpe","pumpeXID","PUMPE","Pumpe"],"pumpe",null);  
                 configfileParser($configHeating[$module], $config[$module], ["brenner","brennerXID","Brenner","BRENNER"],"brenner",null);  
+                configfileParser($configHeating[$module], $config[$module], ["energy","energyID","Energy","BrennerEnergie","ENERGY"],"energy",null);                  
                 configfileParser($configHeating[$module], $config[$module], ["firestatus","firestatusID","Firestatus","FireStatus","FIRESTATUS"],"firestatus",null);  
                 configfileParser($configHeating[$module], $config[$module], ["tanklevel","tanklevelID","Tanklevel","TankLevel","TANKLEVEL"],"tanklevel",null);  
                 configfileParser($configHeating[$module], $config[$module], ["tanklpercm","tanklevelID","Tanklevel","TankLevel","TANKLEVEL"],"tanklpercm",null);  
@@ -8112,7 +8113,9 @@ abstract class AutosteuerungFunktionen
 class Calculations
     {
 
-
+    /* Calculations::damping
+     * data serie damp with tau in hours, gets more smooth but also delayed
+     */
     public function damping($data, $tauStunden, $debug=false)
         {
         $temp=array();
@@ -8150,6 +8153,48 @@ class Calculations
         }
 
 
+    /* Calculations::lasttime
+     * reads a time serie and looks for an approbriate value to find the difference of vaues between the given time span
+     * one value a day adjustment, if the value is the same or the span becomes too short. expand the series slightly by prev value
+     */
+    function lasttime($liter,$targettime,$debug=false)
+        {
+        $first=true; 
+        $start=false; $found=false; $actual=false;
+        foreach ($liter as $entry)
+            {
+            if ($debug>1) echo "   ".str_pad($entry["Value"],10).str_pad(date("d.m.Y H:i",$entry["TimeStamp"]),20);
+            if ($first)
+                {
+                //print_R($entry);
+                $first=false;
+                }
+            if ($found)
+                {
+                $actual=$entry["Value"];
+                }
+            else
+                {
+                if ($entry["TimeStamp"]>$targettime) 
+                    {
+                    $start=$entry["Value"];
+                    //if ($debug) echo "found on ".date("d.m.Y H:i",$entry["TimeStamp"]);
+                    if ($debug) echo "found, delay deviation ".nf($entry["TimeStamp"]-$targettime,"s");
+                    $found=true;
+                    if (($entry["TimeStamp"]-$targettime)>(4*60*60))
+                        {
+                        if ($debug) echo " bigger than 4 hours, do prev value";
+                        $start=$prev;
+                        $actual=$entry["Value"];
+                        }
+                    if ( $debug && ($debug<2)) echo "\n";
+                    }
+                $prev=$entry["Value"];
+                }
+            if ($debug>1) echo "\n";
+            }
+        return ([$actual,$start]);
+        }
     }
 
 /*****************************************************************************************************
@@ -8200,7 +8245,8 @@ class Calculations
 class AutosteuerungRegler extends AutosteuerungFunktionen
 	{
     public $heatingPowerID,$heatingTimeID,$restartTimeHeatingID,$waterPowerID,$firePowerID;
-    public $gasolineDailyID,$gasolineID;
+    public $gasolineID;
+    public $gasolineDailyID,$tanklevelDailyID,$energyDailyID;
     public $powerStatusID,$heatingStatus,$heatingfullStatus;
     
     public $stateEngineID,$stateTimerCounterID,$stateTimerStatusID,$stateTimerValueID;
@@ -8304,10 +8350,14 @@ class AutosteuerungRegler extends AutosteuerungFunktionen
                 $waterPowerID               = CreateVariableByName($categoryId_Heating,"waterPower",         2,"~Power",null,0,null,0);                // 5 Stundenwert gemittelt aus der berichtigten Spreizung
                 $firePowerID                = CreateVariableByName($categoryId_Heating,"firePower",          2,"~Power",null,0,null,0);                // 5 Stundenwert gemittelt aus der brennerperformance
                 $gasolineID                 = CreateVariableByName($categoryId_Heating,"Gasoline",           2,"",null,0,null,0); 
-                $gasolineDailyID            = CreateVariableByName($categoryId_Heating,"GasolineDaily",      2,"",null,0,null,0);                                
+                
+                $gasolineDailyID            = CreateVariableByName($categoryId_Heating,"GasolineDaily",      2,"",null,0,null,0);   
+                $tanklevelDailyID           = CreateVariableByName($categoryId_Heating,"TanklevelDaily",     2,"",null,0,null,0);   
+                $energyDailyID              = CreateVariableByName($categoryId_Heating,"EnergyDaily",        2,"",null,0,null,0);                               
 
                 $heatingStatus			    = CreateVariableByName($categoryId_Heating,"simpleStatusView",   3,'~HTMLBox');          
-                $heatingfullStatus		    = CreateVariableByName($categoryId_Heating,"fullStatusView",     3,'~HTMLBox');          
+                $heatingfullStatus		    = CreateVariableByName($categoryId_Heating,"fullStatusView",     3,'~HTMLBox'); 
+                $heatingStatistics			= CreateVariableByName($categoryId_Heating,"HeatingStatistics",  3,'~HTMLBox');         
 
                 $stateEngineID              = CreateVariableByName($categoryId_Heating,"stateEngine",        3,"",null,0,null,"off");    
                 $stateTimerCounterID        = CreateVariableByName($categoryId_Heating,"stateTimerCounter",  1,"",null,0,null,0);
@@ -8343,6 +8393,10 @@ class AutosteuerungRegler extends AutosteuerungFunktionen
                 $ao->setArchiving($powerStatusID,true,false);           // wielang Pumpe und Brenner unter Strom, keine Brennleistung                
                 $ao->setArchiving($gasolineID,true,true);               // Archiving as Counter
 
+                $ao->setArchiving($gasolineDailyID,true,false);
+                $ao->setArchiving($tanklevelDailyID,true,false);        
+                $ao->setArchiving($energyDailyID,true,false);
+
                 $this->categoryId_Heating = $categoryId_Heating;
                 }
             }
@@ -8365,16 +8419,20 @@ class AutosteuerungRegler extends AutosteuerungFunktionen
             $categoryId_Heating        = IPS_GetCategoryIDByName("Heating",$categoryId_Autosteuerung);
             
             $this->heatingTimeID            = IPS_GetVariableIDByName("heatingTime",$categoryId_Heating);                    // in Stunden
-            $this->restartTimeHeatingID      = IPS_GetVariableIDByName("restartTimeHeating",$categoryId_Heating);
+            $this->restartTimeHeatingID     = IPS_GetVariableIDByName("restartTimeHeating",$categoryId_Heating);
 
             $this->heatingPowerID           = IPS_GetVariableIDByName("heatingPower",$categoryId_Heating);
             $this->waterPowerID             = IPS_GetVariableIDByName("waterPower",$categoryId_Heating);                // 5 Stundenwert gemittelt aus der berichtigten Spreizung
             $this->firePowerID              = IPS_GetVariableIDByName("firePower",$categoryId_Heating);                // 5 Stundenwert gemittelt aus der brennerperformance
-            $this->gasolineID               = IPS_GetVariableIDByName("Gasoline",$categoryId_Heating);   
-            $this->gasolineDailyID          = IPS_GetVariableIDByName("GasolineDaily",$categoryId_Heating);                          
+            $this->gasolineID               = IPS_GetVariableIDByName("Gasoline",$categoryId_Heating); 
+
+            $this->gasolineDailyID          = IPS_GetVariableIDByName("GasolineDaily",$categoryId_Heating);             
+            $this->tanklevelDailyID         = IPS_GetVariableIDByName("TanklevelDaily",$categoryId_Heating);             
+            $this->energyDailyID            = IPS_GetVariableIDByName("EnergyDaily",$categoryId_Heating);             
 
             $this->heatingStatus			= IPS_GetVariableIDByName("simpleStatusView",$categoryId_Heating);          
             $this->heatingfullStatus		= IPS_GetVariableIDByName("fullStatusView",$categoryId_Heating);          
+            $this->heatingStatistics		= IPS_GetVariableIDByName("HeatingStatistics",$categoryId_Heating); 
 
             $this->stateEngineID            = IPS_GetVariableIDByName("stateEngine",$categoryId_Heating);
             $this->stateTimerCounterID      = IPS_GetVariableIDByName("stateTimerCounter",$categoryId_Heating);
@@ -8414,8 +8472,9 @@ class AutosteuerungRegler extends AutosteuerungFunktionen
 
         $html  = "";
         $html .= "<table><tr>";
-        $html .= "<td>StateEngine : ".GetValue($this->stateEngineID)."</td<";
+        $html .= "<td>StateEngine</td><td colspan=2>".GetValue($this->stateEngineID)."</td>";
         $html .= "</tr><tr>";
+        $html .= "<td>Kesselkreislauf</td>";        
         $html .= "<td>".GetValue($reglerConf["vorlauf"])."°C</td>";
         $html .= "<td>".GetValue($reglerConf["ruecklauf"])."°C</td>";
         $html .= "<td>".GetValue($reglerConf["kesseltemp"])."°C</td>";
@@ -8424,11 +8483,11 @@ class AutosteuerungRegler extends AutosteuerungFunktionen
             $html .= "</tr><tr>";
             $html .= "<td>".$entry["Name"]."</td>";            
             $html .= "<td>".$entry["Value"]." °C</td>";
-            $html .= "<td>Max ".$entry["Maxtemp"]["Value"]." °C</td><td>Time ".date("d.m.Y H:i",$entry["Maxtemp"]["TimeStamp"])." °C</td>";
-            $html .= "<td>Min ".$entry["Mintemp"]["Value"]." °C</td><td>Time ".date("d.m.Y H:i",$entry["Mintemp"]["TimeStamp"])." °C</td>";
+            $html .= "<td>Max ".$entry["Maxtemp"]["Value"]." °C</td><td>".date("D H:i",$entry["Maxtemp"]["TimeStamp"])."</td>";
+            $html .= "<td>Min ".$entry["Mintemp"]["Value"]." °C</td><td>".date("D H:i",$entry["Mintemp"]["TimeStamp"])."</td>";            
             }
         $html .= "</tr><tr>";  
-        $html .= "<td>Timer</td><td>Set ".nf(GetValue($this->stateTimerValueID),"s")."</td><td>Actual ".$timertime." Min</td><td> Action at ".$timeraction." Min</td>";  
+        $html .= "<td>Timer</td><td>Set ".nf(GetValue($this->stateTimerValueID),"s")."</td><td>Actual ".$timertime." Min</td><td colspan=2> Action at ".$timeraction." Min</td>";  
         if ($tanklevel)
             {
             $html .= "</tr><tr>";  
@@ -8543,6 +8602,105 @@ class AutosteuerungRegler extends AutosteuerungFunktionen
         SetValue($this->stateTimerStatusID,GetValue($this->stateTimerStatusID));            // Update every 30 Minutes, detection of Midnight uses this value
         }
 
+     public function doStatistics($debug=false)
+        {
+        $ergebnis = array();
+
+        // Tankanzeige etc.
+        $reglerConf = $this->getConfigHeating();
+        if ($debug>1)  { echo "Autosteuerung Regler Configuration:\n"; print_r($reglerConf); }
+        $tanklevelId=$reglerConf["tanklevel"];
+        $tanklevel = GetValue($tanklevelId);
+        $ergebnis["Tanklevel"]["Raw"]=$tanklevel;
+        echo "   Tanklevel ($tanklevelId)      : $tanklevel Liter (aktueller Messwert von Anzeige, ungefiltert)\n";
+        $oelverbrauchID=$this->gasolineID;
+        $liters=GetValue($oelverbrauchID);
+        $ergebnis["Gasoline"]["Total"]=$liters;
+        echo "   Oelheizung aktuell verbraucht : $liters Liter (geschätzt von Brenner Laufzeit)\n";
+
+        /* Tages und Wochenverbauch, tagesaktuell
+        * Tageswerte in das Archiv, not counted
+        * Auswertung in eine html Tabelle
+        */
+
+        $energyID = $energyID = $reglerConf["energy"];
+
+        $archiveOps = new archiveOps(); 
+        $config=array();
+        $config["StartTime"]=time()-8*24*60*60;                // kann Unixtime und string Time, viele Energiewerte
+        $energy=$archiveOps->getValues($energyID,$config);
+        $gasoline=$archiveOps->getValues($oelverbrauchID,$config);
+        $config["StartTime"]=time()-60*24*60*60;               // lange Historie für genaue Werte 
+        $config["cleanupData"]["Range"]["max"]=6000; $config["cleanupData"]["Range"]["min"]=100;
+        $resultAll = $archiveOps->getValues($tanklevelId,$config); 
+        $result=$resultAll["Values"];
+        $ca = new Calculations;
+        $liter = $ca->damping($result,5*24);        // in Stunden
+
+        // herausrechnen, aktueller Stand, Verbrauch pro Woche   //Gesamt/Monatsverbrauch direkt aus dem Tanklevel, Ungenauigkeit ca +/- 1cm  ca. 80l
+        //print_r($liter);
+
+        // Verbrauch 1 Woche und aktueller Wert
+        $targettime=time()-7*24*60*60;
+        echo "\n";
+
+        // incoming energy parameters tank level estimated, gasoline calc, energy consumed
+        [$actual,$start]=$ca->lasttime($liter,$targettime);  
+        $consumption =  round(abs($actual-$start),1); 
+        echo "   Tanklevel,        Wert vor 1 Woche ist : ".round($start,0)." Aktuell : ".round($actual,0)."  Verbrauch : $consumption l \n";
+        $ergebnis["Tanklevel"]["Actual"]=round($actual,0);
+        $ergebnis["Tanklevel"]["Week"]=$consumption;
+
+        [$actual,$start]=$ca->lasttime($gasoline["Values"],$targettime);  
+        $consumption =  round(abs($actual-$start),1);  
+        echo "   Ölverbrauch,      Wert vor 1 Woche ist : ".round($start,1)." Aktuell : ".round($actual,1)."  Verbrauch : $consumption l \n";
+        $ergebnis["Gasoline"]["Week"]=$consumption;
+
+        [$actual,$start]=$ca->lasttime($energy["Values"],$targettime);    
+        $consumption =  round(abs($actual-$start),3);  
+        echo "   Energieverbrauch, Wert vor 1 Woche ist : ".round($start,1)." Aktuell : ".round($actual,1)."  Verbrauch $consumption kWh \n";
+        $ergebnis["Energy"]["Actual"]=round(GetValue($energyID),3);
+        $ergebnis["Energy"]["Week"]=$consumption;
+
+        // Verbrauch 1 Tag und aktueller Wert
+        $targettime=time()-1*24*60*60;
+        echo "\n";
+
+        // incoming energy parameters tank level estimated, gasoline calc, energy consumed
+        [$actual,$start]=$ca->lasttime($liter,$targettime); 
+        $consumption = round(abs($actual-$start),1) ;  
+        echo "   Tanklevel,        Wert vor 1 Tag ist : ".round($start,0)." Aktuell : ".round($actual,0)."  Verbrauch : $consumption l \n";
+        $ergebnis["Tanklevel"]["Day"]=$consumption;
+
+        [$actual,$start]=$ca->lasttime($gasoline["Values"],$targettime);   
+        $consumption = round(abs($actual-$start),1) ; 
+        echo "   Ölverbrauch,      Wert vor 1 Tag ist : ".round($start,1)." Aktuell : ".round($actual,1)."  Verbrauch : $consumption l \n";
+        $ergebnis["Gasoline"]["Day"]=$consumption;
+
+        [$actual,$start]=$ca->lasttime($energy["Values"],$targettime); 
+        $consumption = round(abs($actual-$start),3);    
+        echo "   Energieverbrauch, Wert vor 1 Tag ist : ".round($start,1)." Aktuell : ".round($actual,1)."  Verbrauch : $consumption kWh \n";
+        $ergebnis["Energy"]["Day"]=$consumption;
+
+        $html  = "";
+        $html .= "<table><tr>";
+        $html .= "<td>Tanklevel</td><td>".$ergebnis["Tanklevel"]["Raw"]."/".$ergebnis["Tanklevel"]["Actual"]." l</td>";
+        $html .= "<td>".$ergebnis["Tanklevel"]["Day"]." l</td>";
+        $html .= "<td>".$ergebnis["Tanklevel"]["Week"]." l</td>";
+        $html .= "</tr><tr>";
+        $html .= "<td>Gasoline</td><td>".$ergebnis["Gasoline"]["Total"]." l</td>";
+        $html .= "<td>".$ergebnis["Gasoline"]["Day"]." l</td>";
+        $html .= "<td>".$ergebnis["Gasoline"]["Week"]." l</td>";
+        $html .= "</tr><tr>";
+        $html .= "<td>Energy</td><td>".$ergebnis["Energy"]["Actual"]." kWh</td>";
+        $html .= "<td>".$ergebnis["Energy"]["Day"]." kWh</td>";
+        $html .= "<td>".$ergebnis["Energy"]["Week"]." kWh</td>";
+        $html .= "</tr>";
+        $html .= "</table>";        
+        $ergebnis["html"]=$html;
+
+        return($ergebnis);
+        }
 
     /* AutosteuerungRegler::processOnTimer
      *  called every minute, counts down until zero, 
@@ -11965,24 +12123,33 @@ class AutosteuerungWebfront
      */
     function arrangeWebfrontLinks($webfront_links,$tabs,$user,$debug=false)
         {
-        if ($debug) echo "\nWebfront Konfiguration für Administrator User usw, geordnet nach data.OID  \n";
+        if ($debug)  
+            {
+            echo "\n";
+            echo "arrangeWebfrontLinks,Webfront Konfiguration für Administrator User usw, geordnet nach data.OID  \n";
+            }
         if ($debug>1) print_r($webfront_links);
 
         // zusaetzliche Parameter für die Gestaltung des Webfronts, praktisch anordnen nach dem Namen (parameter # 3)
         $wfc = Autosteuerung_GetWebFrontConfiguration()[$user];         // Zusatzparametrierung
+        //print_R($wfc);
         foreach ($wfc as $index => $entries)
             {
             if (is_array($entries)==false) $entries[]=$entries;
             foreach ($entries as $entry)
                 {
-                //echo "$index      "; print_r($entry);
-                $data=array();
-                $data["type"]="SplitPane";
-                $data["vertical"]=$entry[5];
-                $data["width"]=$entry[6]; 
-                $data["icon"]=$entry[4];                
-                if ( (isset($entry[3])) && ($entry[3] != "") ) $webFrontConfiguration[$entry[3]]=$data;             // Trigger übernommen, Tabname
-                else $webFrontConfiguration[$index]=$data;
+                if ($entry[0]==IPSHEAT_WFCSPLITPANEL)
+                    {   
+                    echo "$index      ".$entry[0]."\n";                  
+                    //echo "$index      "; print_r($entry);
+                    $data=array();
+                    $data["type"]="SplitPane";
+                    $data["vertical"]=$entry[5];
+                    $data["width"]=$entry[6]; 
+                    $data["icon"]=$entry[4];                
+                    if ( (isset($entry[3])) && ($entry[3] != "") ) $webFrontConfiguration[$entry[3]]=$data;             // Trigger übernommen, Tabname
+                    else $webFrontConfiguration[$index]=$data;
+                    }
                 }
             }
 

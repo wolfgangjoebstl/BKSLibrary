@@ -63,7 +63,8 @@
 	//    IN: $tmpFilename = Der Dateiname welche die Config Daten enthält
 	// ------------------------------------------------------------------------
 	function WriteContentWithFilename($cfg, $tmpFilename)
-	{
+	    {
+        //echo "WriteContentWithFilename, IPS7\n";
 		DebugModuleName($cfg,"WriteContentWithFilename");
 
 		if ($tmpFilename != "")
@@ -1132,7 +1133,8 @@
     //    OUT: Aktueller Wert
     // ------------------------------------------------------------------------
     function ReadLoggedValue($instanceID, $variableId, $time)
-    {
+        {
+        //echo "ReadLoggedValue $variableId\n";
         if ($time > time()) $time = time();
         $values = AC_GetLoggedValues($instanceID, $variableId, 0, $time+1, 1);
         $currentVal['Value']= $values[0]['Value'];

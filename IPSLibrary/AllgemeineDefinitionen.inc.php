@@ -4720,7 +4720,7 @@ class archiveOps
             $config["Gaps"] = new gapsEval($gaps, "Hours",$config,$debug);       	                        // Full, ohne Parameter wird der ganze Datensatz (zwischen Start und Ende) genommen
             }
         $starttime = $config["StartTime"]; $endtime = $config["EndTime"];
-        $debug1=true;
+        $debug1=false;          // manual Debug setup
 
         if ( ($werte !== false) && (count($werte)>0) )
             {
@@ -4761,12 +4761,26 @@ class archiveOps
         return($werteTotal);
         }
 
+    /* archiveOps::evalConfigmanAgg
+     * manAggregate kann Zusatzparameter:  
+     *      hourly,             manAggregate=0,increment=0
+     *      4hours              manAggregate=40,increment=0
+     *      daily               manAggregate=1,increment=0
+     *      weekly              manAggregate=2,increment=1       
+     *      monthly             manAggregate=3,increment=1
+     * manAggregate kann auch Array:
+     *
+     *
+     */
     private function evalConfigmanAgg(&$config,$debug=false)
         {
         if (isset(($config["manAggregate"]))===false) $config["manAggregate"]=true;
+        $show=0; $format=0;
         if (is_array($config["manAggregate"]))
             {
-            // noch nicht implementiert
+            //$debug=true;
+            if (isset($config["manAggregate"]["Show"])) $show=$config["manAggregate"]["Show"];
+            if (isset($config["manAggregate"]["Format"])) $format=$config["manAggregate"]["Format"];
             if ($debug) print_R($config["manAggregate"]);
             switch (strtoupper($config["manAggregate"]["Aggregate"]))
                 {
@@ -4780,7 +4794,7 @@ class archiveOps
                     break;
                 case "DAILY":
                     $manAggregate=1;
-                    $increment=1;                       // unterschiedliche Funktionen bei der Integration der Werte, 0 geeignet für 15 Minutenwerte     , 3 für temperaturwerte
+                    $increment=0;                       // unterschiedliche Funktionen bei der Integration der Werte, 0 geeignet für 15 Minutenwerte     , 3 für temperaturwerte
                     break;
                 case "WEEKLY";
                     $manAggregate=2;
@@ -4834,7 +4848,25 @@ class archiveOps
             if ($debug) echo "Aggregated is configured with ".$config["manAggregate"]." converted to internal modes :  manAggregate $manAggregate und increment $increment.\n";                
             }
 
+        $result = [ "manAggregate" => $manAggregate, "increment" => $increment, "show" => $show, "format" => $format];
+        return ($result);
+        }
+
+    private function setConfigmanAgg($config)
+        {
+        $manAggregate=0;
+        $increment=0; 
+        if (isset($config["manAggregate"])) $manAggregate=$config["manAggregate"];
+        if (isset($config["increment"])) $increment=$config["increment"];
         return ([$manAggregate,$increment]);
+        }
+
+    private function setConfigmanAggShow($config)
+        {
+        $show=0; $format=0;
+        if (isset($config["show"])) $show=$config["show"];
+        if (isset($config["format"])) $format=$config["format"];
+        return ([$show,$format]);
         }
 
     /* manualDailyAggregate
@@ -4871,8 +4903,15 @@ class archiveOps
         // Configuration config klären
         if (is_array($result)===false) return (false);                  // $result wird als array übergeben, damit kann man mehrere Ergebnisse zusammenfassen
 
-        [$manAggregate,$increment]=$this->evalConfigmanAgg($config);
-        if ($debug) echo "manualDailyAggregate aufgerufen mit ".json_encode($config["manAggregate"]).". ($manAggregate,$increment) \n";
+        $configAgg = $this->evalConfigmanAgg($config); 
+        [$show,$format]=$this->setConfigmanAggShow($configAgg);
+        if ($debug===false) 
+            {
+            $debug=$show; 
+            echo "New Debug is $show. Format is $format \n";
+            }    
+        [$manAggregate,$increment]=$this->setConfigmanAgg($configAgg);
+        if ($debug) echo "manualDailyAggregate aufgerufen mit ".json_encode($configAgg).". ($manAggregate,$increment) \n";
 
         // mit welchem Index hängen wir die Daten an die bestehenden dran
         if (count($result)==0) $index=0;              // Wir brauchen einen Index zum abspeichern der Werte, wenn leer beginnen wir mit 0
@@ -5066,6 +5105,7 @@ class archiveOps
                             $ergebnisTag=$ergebnis+$aktwert;                         // 00:00 vom aktuellen tag waren bereits die Werte des Vortages, rauf wäre es umgekehrt
                             $ergebnis=0;
                             $result[$index]["TimeStamp"]=$zeit;
+                            if ($format=="standard")  $result[$index]["TimeStamp"]=$zeit-12*60*60;           // in der Mitte  aber nur von Daily !!!                          
                             $countPeriode++;
                             $count2=$countPeriode;          // eh nur zum anzeigen
                             if ($countPeriode!=0) $average=$ergebnisTag/$countPeriode;
@@ -5162,6 +5202,8 @@ class archiveOps
                 }
             if ($increment==2) { $altwert2=$aktwert; $altzeit2=$zeit; }          // damit die Differenz in Display noch berechnet werden kann
             }               // Ende foreach werte
+
+        echo "Ergebnis mdA [$manAggregate,$increment] : "; print_r($result[array_key_first($result)]); 
 
         $carryover=array();
         $carryover["Value"] = $ergebnis;
@@ -5408,7 +5450,8 @@ class archiveOps
             if (is_array($werte)===false) $werte=false;
             $werte = $this->getArchivedData($werte,$config,$debug1);   
             if ($werte===false) $werte=array();
-            if (isset($werte["Description"])) print_R($werte["Description"]);                     
+            if (isset($werte["Description"])) print_R($werte["Description"]); 
+            //echo "Ergebnis: "; print_r($werte[array_key_first($werte)]);                    
             }
         elseif  ($config["DataType"]==="Counter")     //logged Werte auslesen, Zählerstände in Vorschübe ändern
             {
@@ -6245,6 +6288,7 @@ class archiveOps
             {
             if ($config["Aggregated"]) 
                 {
+                //if ($i==0) print_r($wert);
                 if (isset($config["AggregatedValue"]))
                     {
                     $wertUsed=$wert[$config["AggregatedValue"]];                // Timestamp egal
@@ -7089,6 +7133,7 @@ class statistics
             { 
             configFileParser($config1["manAggregate"], $config["manAggregate"], ["Aggregate","aggregate","AGGREGATE"],"Aggregate","daily");
             configFileParser($config1["manAggregate"], $config["manAggregate"], ["Format","format","FORMAT"],"Format","standard");
+            configFileParser($config1["manAggregate"], $config["manAggregate"], ["Show","show","SHOW"],"Show",false);
             }
         else $config["manAggregate"] = $config1["manAggregate"];
 
@@ -7162,8 +7207,11 @@ class statistics
      */
     function updateConfig($configInput=false, $extraDebug=false)
         {
-        echo "updateConfig  \n";
-        if ($extraDebug) $this->extendedDebug=true;
+        if ($extraDebug) 
+            {
+            echo "updateConfig  \n";                
+            $this->extendedDebug=true;
+            }
         $this->config=$this->setConfiguration($configInput);
         if ( ($this->config["Integrate"]) )
             {
